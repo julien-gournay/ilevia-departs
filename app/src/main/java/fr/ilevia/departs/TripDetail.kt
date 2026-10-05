@@ -62,9 +62,11 @@ fun TripDetailScreen(trip: Trip, onClose: () -> Unit) {
                 data = withContext(Dispatchers.IO) {
                     val all = IleviaApi.fetchAll(force = true)
                     val limit = Instant.now().minusSeconds(30)
-                    val mine = all.filter { trip.stop.matches(it) && it.time.isAfter(limit) }.sortedBy { it.time }
+                    val mineAll = StopMatch.rowsFor(trip.stop, all)
+                    val mine = mineAll.filter { it.time.isAfter(limit) }.sortedBy { it.time }
+                    val stationName = mineAll.firstOrNull()?.station ?: trip.stop.station
                     val others = all
-                        .filter { it.station.equals(trip.stop.station, true) && !trip.stop.matches(it) && it.time.isAfter(limit) }
+                        .filter { norm(it.station) == norm(stationName) && it !in mineAll && it.time.isAfter(limit) }
                         .sortedBy { it.time }
                     DetailData(mine, others)
                 }

@@ -97,9 +97,13 @@ fun directionChoices(all: List<Passage>, line: String): List<String> {
  */
 fun stopChoices(all: List<Passage>, line: String, direction: String): List<String> {
     val live = all.filter { it.line.equals(line, true) && norm(it.direction) == norm(direction) }.map { it.station }.distinct()
-    val liveByNorm = live.associateBy { norm(it) }
-    val idx = StopIndex.stopsFor(line, direction).map { it.first }
-    val known = idx.map { norm(it) }.toSet()
-    val ordered = idx.map { liveByNorm[norm(it)] ?: it }.distinctBy { norm(it) }
-    return ordered + live.filter { norm(it) !in known }.sorted()
+    val idxStops = StopIndex.stopsFor(line, direction)
+    // Pour chaque arrêt de l'index, on reprend l'orthographe du flux temps réel (« Pt De Neuville » → « TOURCOING PONT DE NEUVILLE »).
+    val used = HashSet<String>()
+    val ordered = idxStops.map { (name, commune) ->
+        val exact = live.firstOrNull { norm(it) == norm(name) }
+        val fuzzy = exact ?: live.mapNotNull { l -> StopMatch.score(name, commune, l)?.let { l to it } }.minByOrNull { it.second }?.first
+        (fuzzy ?: name).also { used += norm(it) }
+    }.distinctBy { norm(it) }
+    return ordered + live.filter { norm(it) !in used }.sorted()
 }

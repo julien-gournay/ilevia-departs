@@ -41,6 +41,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
@@ -118,6 +120,8 @@ fun AppRoot() {
     var trips by remember { mutableStateOf(store.all()) }
     val favStore = remember { FavoriteStore(context) }
     var favs by remember { mutableStateOf(favStore.all()) }
+    val orderStore = remember { OrderStore(context) }
+    var order by remember { mutableStateOf(orderStore.get()) }
     var disruptions by remember { mutableStateOf<List<Disruption>>(emptyList()) }
     var editTrip by remember { mutableStateOf<Trip?>(null) }
     var editFav by remember { mutableStateOf<Favorite?>(null) }
@@ -215,6 +219,16 @@ fun AppRoot() {
                     trips = trips, favs = favs, disruptions = disruptions,
                     widgetIds = widgetIds, updater = updater, modifier = Modifier.padding(pad),
                     onNew = { newChoice = true },
+                    order = order,
+                    onMove = { key, delta ->
+                        val cur = mergeOrder(order, trips, favs).toMutableList()
+                        val i = cur.indexOf(key)
+                        val j = i + delta
+                        if (i >= 0 && j in cur.indices) {
+                            cur[i] = cur[j].also { cur[j] = cur[i] }
+                            order = cur; orderStore.set(cur)
+                        }
+                    },
                     onEditTripAlerts = { editTrip = it },
                     onToggleFav = { f, on -> favStore.save(f.copy(enabled = on)); reload() },
                     onEditFavAlerts = { editFav = it },
@@ -279,6 +293,8 @@ fun TripsScreen(
     updater: UpdateController,
     modifier: Modifier,
     onNew: () -> Unit,
+    order: List<String>,
+    onMove: (String, Int) -> Unit,
     onOpen: (String) -> Unit,
     onEditTripAlerts: (Trip) -> Unit,
     onToggleFav: (Favorite, Boolean) -> Unit,
@@ -291,10 +307,13 @@ fun TripsScreen(
     val context = LocalContext.current
     var refreshKey by remember { mutableIntStateOf(0) }
     var refreshing by remember { mutableStateOf(false) }
+    var reorder by remember { mutableStateOf(false) }
+    val entries = mergeOrder(order, trips, favs)
     LazyColumn(modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { ScreenHeader("Mes trajets", "Prochains départs en temps réel") }
+                if (entries.size > 1) TextButton(onClick = { reorder = !reorder }) { Text(if (reorder) "Terminé" else "Ordre") }
                 if (refreshing) CircularProgressIndicator(Modifier.size(24.dp).padding(end = 0.dp), strokeWidth = 2.dp)
                 else IconButton(onClick = {
                     refreshing = true
@@ -311,27 +330,45 @@ fun TripsScreen(
         if (trips.isEmpty() && favs.isEmpty()) {
             item { EmptyState(onNew) }
         } else {
-            items(favs, key = { "f" + it.id }) { fav ->
-                FavoriteCard(
-                    f = fav, refreshKey = refreshKey,
-                    disruptionCount = Disruptions.forLines(disruptions, setOf(fav.stop.line)).size,
-                    onToggle = { onToggleFav(fav, it) },
-                    onEditAlerts = { onEditFavAlerts(fav) },
-                    onDelete = { onDeleteFav(fav.id) },
-                )
-            }
-            items(trips, key = { it.id }) { trip ->
-                TripCard(
-                    trip = trip,
-                    disruptionCount = Disruptions.forLines(disruptions, setOf(trip.stop.line)).size,
-                    onEditAlerts = { onEditTripAlerts(trip) },
-                    refreshKey = refreshKey,
-                    onOpen = { onOpen(trip.id) },
-                    onWidget = trip.id in widgetIds,
-                    onToggleWidget = { onToggleWidget(trip.id) },
-                    onToggleAlert = { onToggleAlert(trip, it) },
-                    onDelete = { onDelete(trip.id) },
-                )
+            items(entries, key = { it }) { key ->
+                val fav = if (key.startsWith("f:")) favs.firstOrNull { "f:" + it.id == key } else null
+                val trip = if (key.startsWith("t:")) trips.firstOrNull { "t:" + it.id == key } else null
+                val idx = entries.indexOf(key)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        if (fav != null) {
+                            FavoriteCard(
+                                f = fav, refreshKey = refreshKey,
+                                disruptionCount = Disruptions.forLines(disruptions, setOf(fav.stop.line)).size,
+                                onToggle = { onToggleFav(fav, it) },
+                                onEditAlerts = { onEditFavAlerts(fav) },
+                                onDelete = { onDeleteFav(fav.id) },
+                            )
+                        } else if (trip != null) {
+                            TripCard(
+                                trip = trip,
+                                disruptionCount = Disruptions.forLines(disruptions, setOf(trip.stop.line)).size,
+                                onEditAlerts = { onEditTripAlerts(trip) },
+                                refreshKey = refreshKey,
+                                onOpen = { onOpen(trip.id) },
+                                onWidget = trip.id in widgetIds,
+                                onToggleWidget = { onToggleWidget(trip.id) },
+                                onToggleAlert = { onToggleAlert(trip, it) },
+                                onDelete = { onDelete(trip.id) },
+                            )
+                        }
+                    }
+                    if (reorder) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            IconButton(enabled = idx > 0, onClick = { onMove(key, -1) }) {
+                                Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Monter")
+                            }
+                            IconButton(enabled = idx < entries.size - 1, onClick = { onMove(key, 1) }) {
+                                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Descendre")
+                            }
+                        }
+                    }
+                }
             }
         }
     }

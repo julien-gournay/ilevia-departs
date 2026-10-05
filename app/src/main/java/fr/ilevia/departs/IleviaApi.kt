@@ -131,7 +131,7 @@ object IleviaApi {
     }
 
     fun passagesFor(sel: StopSelection, force: Boolean = false): List<Passage> =
-        fetchAll(force).filter { sel.matches(it) }.sortedBy { it.time }
+        StopMatch.rowsFor(sel, fetchAll(force)).sortedBy { it.time }
 
     private fun download(url: String): String {
         val c = URL(url).openConnection() as HttpURLConnection

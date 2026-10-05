@@ -168,7 +168,7 @@ fun NewFavoriteScreen(trips: List<Trip>, onCancel: () -> Unit, onSave: (Favorite
                     stop = it
                     name = "${it.line} · ${pretty(it.station)}"
                     // Pré-remplit l'horaire avec le prochain passage annoncé.
-                    all.filter { p -> it.matches(p) }.minByOrNull { p -> p.time }?.let { p ->
+                    StopMatch.rowsFor(it, all).minByOrNull { p -> p.time }?.let { p ->
                         val z = java.time.ZonedDateTime.ofInstant(p.time, java.time.ZoneId.of("Europe/Paris"))
                         minute = z.hour * 60 + z.minute
                     }
@@ -201,7 +201,7 @@ fun NewFavoriteScreen(trips: List<Trip>, onCancel: () -> Unit, onSave: (Favorite
                     StopPicker(all, "Favori", onPicked = { choose(it) }, onBack = { if (trips.isNotEmpty()) manual = false else onCancel() })
                 }
             } else {
-                val upcoming = remember(all, sel) { all.filter { sel.matches(it) }.sortedBy { it.time }.take(6) }
+                val upcoming = remember(all, sel) { StopMatch.rowsFor(sel, all).sortedBy { it.time }.take(6) }
                 Column(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),

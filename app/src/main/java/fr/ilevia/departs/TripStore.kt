@@ -151,3 +151,16 @@ class FavoriteStore(context: Context) {
         prefs.edit().putString("delay_$id", "$day|$d").apply()
     }
 }
+
+/** Ordre d'affichage des trajets (« t:<id> ») et favoris (« f:<id> ») sur l'écran principal. */
+class OrderStore(context: Context) {
+    private val prefs = context.applicationContext.getSharedPreferences("order", Context.MODE_PRIVATE)
+    fun get(): List<String> = (prefs.getString("order", "") ?: "").split("\n").filter { it.isNotBlank() }
+    fun set(list: List<String>) { prefs.edit().putString("order", list.joinToString("\n")).apply() }
+}
+
+/** Ordre sauvegardé, complété par les éléments nouveaux (favoris d'abord) et débarrassé des supprimés. */
+fun mergeOrder(order: List<String>, trips: List<Trip>, favs: List<Favorite>): List<String> {
+    val existing = favs.map { "f:" + it.id } + trips.map { "t:" + it.id }
+    return order.filter { it in existing } + existing.filter { it !in order }
+}
