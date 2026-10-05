@@ -7,20 +7,19 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Index
+      - name: Feed
         run: |
-          python3 tools/build_stops.py
           python3 - <<'PY'
-          import json,collections
+          import json,urllib.request,collections,datetime
           def note(m): print("::notice::"+m.replace("\n"," | ")[:950])
-          d=json.load(open("app/src/main/assets/stops_index.json"))
-          st=d["stops"]
-          com=collections.Counter(c for n,c in st)
-          note("communes distinctes="+str(len(com))+" vides="+str(com.get("",0)))
-          note("plus longues communes="+str(sorted(com,key=len,reverse=True)[:14]))
-          note("plus longs noms="+str(sorted({n for n,c in st},key=len,reverse=True)[:14]))
-          note("noms avec - ou ( ou / ="+str([n for n,c in st if any(x in n for x in "-(/")][:20]))
-          note("communes avec chiffres/tirets="+str([c for c in com if any(x.isdigit() for x in c)][:15]))
-          note("ex Tourcoing="+str([s for s in st if "tourcoing" in s[0].lower()][:8]))
+          B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/dsp_ilevia:prochains_passages/items?f=application/json&limit=20000"
+          d=json.load(urllib.request.urlopen(urllib.request.Request(B,headers={"User-Agent":"p"}),timeout=90))
+          r=[f["properties"] for f in d["features"]]
+          note(f"now={datetime.datetime.utcnow()+datetime.timedelta(hours=2)} rows={len(r)} lignes={len(set(x['code_ligne'] for x in r))}")
+          note("lignes="+",".join(sorted(set(x['code_ligne'] for x in r)))[:600])
+          note("max_modif="+max(x["date_modification"] for x in r)+" min_heure="+min(x["heure_estimee_depart"] for x in r)+" max_heure="+max(x["heure_estimee_depart"] for x in r))
+          n=[x for x in r if "neuville" in x["nom_station"].lower()]
+          note("neuville="+json.dumps(n[:4],ensure_ascii=False))
+          l82=[x for x in r if x["code_ligne"]=="82"]
+          note(f"ligne82 rows={len(l82)}")
           PY
