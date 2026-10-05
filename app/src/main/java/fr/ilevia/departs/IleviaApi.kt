@@ -38,7 +38,12 @@ object IleviaApi {
 
     private val PARIS: ZoneId = ZoneId.of("Europe/Paris")
 
+    private const val MAX_PAGES = 60
+
+    private data class Fetched(val endpoint: String, val pages: Int, val rows: List<JSONObject>)
+
     @Volatile private var cache: Pair<Long, List<Passage>>? = null
+    @Volatile private var lastFetched: Fetched? = null
 
     /** Tous les prochains passages du réseau (cache 30 s pour ne pas retélécharger inutilement). */
     fun fetchAll(force: Boolean = false): List<Passage> {
@@ -47,9 +52,11 @@ object IleviaApi {
         var lastError: Exception? = null
         for (url in ENDPOINTS) {
             try {
-                val list = parse(download(url))
+                val fetched = fetchRows(url)
+                val list = toPassages(fetched.rows).distinct()
                 if (list.isNotEmpty()) {
                     cache = now to list
+                    lastFetched = fetched
                     return list
                 }
             } catch (e: Exception) {
@@ -57,6 +64,60 @@ object IleviaApi {
             }
         }
         throw lastError ?: IllegalStateException("Aucun passage reçu de l'API Ilévia")
+    }
+
+    /** Télécharge toutes les pages (le serveur plafonne le nombre d'éléments par réponse). */
+    private fun fetchRows(startUrl: String): Fetched {
+        val rows = mutableListOf<JSONObject>()
+        val seen = HashSet<String>()
+        var url: String? = startUrl
+        var pages = 0
+        while (url != null && pages < MAX_PAGES && seen.add(url)) {
+            val root = JSONObject(download(url))
+            val pageRows = rowsOf(root)
+            if (pageRows.isEmpty()) break
+            rows += pageRows
+            pages++
+            url = nextLink(root)
+        }
+        return Fetched(startUrl, pages, rows)
+    }
+
+    private fun nextLink(root: JSONObject): String? {
+        val links = root.optJSONArray("links") ?: return null
+        for (i in 0 until links.length()) {
+            val l = links.optJSONObject(i) ?: continue
+            if (l.optString("rel") == "next") {
+                return l.optString("href").ifBlank { null }?.replace("http://", "https://")
+            }
+        }
+        return null
+    }
+
+    /** Texte de diagnostic : ce que renvoie réellement l'API pour un arrêt donné. */
+    fun diagnostic(query: String): String {
+        val sb = StringBuilder()
+        return try {
+            val all = fetchAll(force = true)
+            val f = lastFetched!!
+            val q = query.trim()
+            sb.appendLine("Maintenant : ${java.time.ZonedDateTime.now(PARIS).toLocalTime().withNano(0)} (Paris)")
+            sb.appendLine("Endpoint : …${f.endpoint.substringBefore('?').takeLast(55)}")
+            sb.appendLine("Pages : ${f.pages} · lignes brutes : ${f.rows.size} · passages lus : ${all.size}")
+            sb.appendLine("Champs : ${f.rows.first().keys().asSequence().toList().joinToString(", ")}")
+            val raw = f.rows.filter { it.toString().contains(q, true) }
+            sb.appendLine()
+            sb.appendLine("Lignes brutes contenant « $q » : ${raw.size}")
+            raw.take(6).forEach { sb.appendLine(it.toString()); sb.appendLine() }
+            val parsed = all.filter { it.station.contains(q, true) }.sortedBy { it.time }
+            sb.appendLine("Passages lus pour cet arrêt : ${parsed.size}")
+            parsed.take(25).forEach {
+                sb.appendLine("${it.line} → ${it.direction} : ${java.time.ZonedDateTime.ofInstant(it.time, PARIS).toLocalTime()}")
+            }
+            sb.toString()
+        } catch (e: Exception) {
+            "Erreur : ${e.javaClass.simpleName} ${e.message}"
+        }
     }
 
     fun passagesFor(sel: StopSelection, force: Boolean = false): List<Passage> =
@@ -76,22 +137,19 @@ object IleviaApi {
         }
     }
 
-    private fun parse(body: String): List<Passage> {
-        val root = JSONObject(body)
-        // GeoJSON : features[].properties ; sinon enregistrements à plat : results / records
-        val rows: List<JSONObject> = when {
-            root.has("features") -> root.getJSONArray("features").objects().map { it.optJSONObject("properties") ?: it }
-            root.has("results") -> root.getJSONArray("results").objects()
-            root.has("records") -> root.getJSONArray("records").objects().map { it.optJSONObject("fields") ?: it }
-            else -> emptyList()
-        }
-        return rows.mapNotNull { r ->
-            val station = r.firstString(STATION_KEYS) ?: return@mapNotNull null
-            val line = r.firstString(LINE_KEYS) ?: return@mapNotNull null
-            val direction = r.firstString(DIRECTION_KEYS) ?: return@mapNotNull null
-            val time = r.firstString(TIME_KEYS)?.let(::parseTime) ?: return@mapNotNull null
-            Passage(station.trim(), line.trim(), direction.trim(), time)
-        }
+    private fun rowsOf(root: JSONObject): List<JSONObject> = when {
+        root.has("features") -> root.getJSONArray("features").objects().map { it.optJSONObject("properties") ?: it }
+        root.has("results") -> root.getJSONArray("results").objects()
+        root.has("records") -> root.getJSONArray("records").objects().map { it.optJSONObject("fields") ?: it }
+        else -> emptyList()
+    }
+
+    private fun toPassages(rows: List<JSONObject>): List<Passage> = rows.mapNotNull { r ->
+        val station = r.firstString(STATION_KEYS) ?: return@mapNotNull null
+        val line = r.firstString(LINE_KEYS) ?: return@mapNotNull null
+        val direction = r.firstString(DIRECTION_KEYS) ?: return@mapNotNull null
+        val time = r.firstString(TIME_KEYS)?.let(::parseTime) ?: return@mapNotNull null
+        Passage(station.trim(), line.trim(), direction.trim(), time)
     }
 
     /** Accepte ISO avec ou sans fuseau (sans fuseau = heure de Paris). */

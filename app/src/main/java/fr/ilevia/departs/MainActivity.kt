@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -43,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -69,10 +72,17 @@ fun App() {
     var trips by remember { mutableStateOf(store.all()) }
     var creating by remember { mutableStateOf(false) }
     var widgetId by remember { mutableStateOf(store.widgetTripId()) }
+    var diag by remember { mutableStateOf(false) }
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    if (diag) {
+        BackHandler { diag = false }
+        DiagnosticScreen(defaultQuery = trips.firstOrNull()?.stop?.station ?: "", onClose = { diag = false })
+        return
     }
 
     if (creating) {
@@ -91,7 +101,7 @@ fun App() {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Mes trajets Ilévia") }) },
+        topBar = { TopAppBar(title = { Text("Mes trajets Ilévia") }, actions = { TextButton(onClick = { diag = true }) { Text("Diagnostic") } }) },
         floatingActionButton = { FloatingActionButton(onClick = { creating = true }) { Text("+") } },
     ) { pad ->
         if (trips.isEmpty()) {
@@ -267,6 +277,33 @@ private fun PickList(items: List<String>, filter: String? = null, onPick: (Strin
         items(shown) { item ->
             Text(item, Modifier.fillMaxWidth().clickable { onPick(item) }.padding(vertical = 14.dp))
             HorizontalDivider()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DiagnosticScreen(defaultQuery: String, onClose: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var query by remember { mutableStateOf(defaultQuery) }
+    var out by remember { mutableStateOf("Appuyez sur Lancer.") }
+    var busy by remember { mutableStateOf(false) }
+    Scaffold(topBar = {
+        TopAppBar(title = { Text("Diagnostic API") }, navigationIcon = { TextButton(onClick = onClose) { Text("Retour") } })
+    }) { pad ->
+        Column(
+            Modifier.padding(pad).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            OutlinedTextField(query, { query = it }, label = { Text("Arrêt à chercher") }, modifier = Modifier.fillMaxWidth())
+            Button(enabled = !busy, onClick = {
+                busy = true; out = "Chargement…"
+                scope.launch {
+                    out = withContext(Dispatchers.IO) { IleviaApi.diagnostic(query) }
+                    busy = false
+                }
+            }) { Text("Lancer") }
+            Text(out, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
