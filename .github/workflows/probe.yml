@@ -7,20 +7,21 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Interroger les flux temps réel
+      - name: Perturbations
         run: |
           python3 - <<'PY'
-          import urllib.request,re,collections
-          def note(m): print("::notice::"+m.replace("\n"," | ").replace("\r","")[:950])
-          g=lambda u: urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"probe"}),timeout=90).read()
-          s=g("https://proxy.transport.data.gouv.fr/resource/ilevia-lille-siri-sm").decode("utf8","replace")
-          rec=re.findall(r"<siri:RecordedAtTime>([^<]+)",s)
-          exp=re.findall(r"<siri:ExpectedDepartureTime>([^<]+)",s)+re.findall(r"<siri:ExpectedArrivalTime>([^<]+)",s)
-          note(f"siri visites={len(rec)} recorded min={min(rec)} max={max(rec)}")
-          note(f"siri expected n={len(exp)} min={min(exp) if exp else None} max={max(exp) if exp else None}")
-          lines=collections.Counter(re.findall(r"<siri:LineRef>ILEVIA:Line::([^:]+):",s))
-          note("siri lignes="+str(len(lines))+" "+",".join(sorted(lines))[:500])
-          b=g("https://proxy.transport.data.gouv.fr/resource/ilevia-lille-gtfs-rt")
-          txt=b.decode("latin1")
-          note("gtfs-rt ids="+",".join(sorted(set(re.findall(r"[A-Z]{3}[0-9A-Z]{3,}",txt)))[:40]))
+          import urllib.request,json,collections
+          def note(m): print("::notice::"+m.replace("\n"," | ")[:950])
+          B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/"
+          for cid in ["dsp_ilevia:perturbations"]:
+              d=json.load(urllib.request.urlopen(urllib.request.Request(B+cid+"/items?f=application/json&limit=3000",headers={"User-Agent":"probe"}),timeout=60))
+              p=[f["properties"] for f in d["features"]]
+              note(f"{cid} n={len(p)} matched={d.get('numberMatched')}")
+              if p:
+                  note("keys="+",".join(p[0].keys()))
+                  note("ex1="+json.dumps(p[0],ensure_ascii=False))
+                  if len(p)>1: note("ex2="+json.dumps(p[1],ensure_ascii=False))
+                  for k in p[0]:
+                      if any(s in k for s in ("ligne","type","cause","effet","statut","severite","gravite")):
+                          note(k+"="+str(collections.Counter(str(x.get(k))[:40] for x in p).most_common(8)))
           PY
