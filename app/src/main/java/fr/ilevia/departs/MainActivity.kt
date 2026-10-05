@@ -115,6 +115,12 @@ fun AppRoot() {
     val store = remember { TripStore(context) }
     val updater = remember { UpdateController(context) }
     var trips by remember { mutableStateOf(store.all()) }
+    val routeStore = remember { RouteStore(context) }
+    var routes by remember { mutableStateOf(routeStore.all()) }
+    var disruptions by remember { mutableStateOf<List<Disruption>>(emptyList()) }
+    var editTrip by remember { mutableStateOf<Trip?>(null) }
+    var editRoute by remember { mutableStateOf<Route?>(null) }
+    var newChoice by remember { mutableStateOf(false) }
     var widgetIds by remember { mutableStateOf(store.widgetTripIds()) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var overlay by rememberSaveable { mutableStateOf("") }
@@ -124,9 +130,16 @@ fun AppRoot() {
         if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
         updater.check()
     }
+    LaunchedEffect(Unit) {
+        while (true) {
+            try { disruptions = withContext(Dispatchers.IO) { Disruptions.fetch() } } catch (_: Exception) {}
+            delay(300_000)
+        }
+    }
 
     fun reload() {
         trips = store.all()
+        routes = routeStore.all()
         widgetIds = store.widgetTripIds()
         WidgetUpdater.refreshAll(context)
     }
@@ -137,6 +150,16 @@ fun AppRoot() {
             onCancel = { overlay = "" },
             onSave = { trip ->
                 store.save(trip)
+                reload()
+                AlertScheduler.ensurePeriodicCheck(context)
+                overlay = ""
+            },
+        )
+    } else if (overlay == "newroute") {
+        NewRouteScreen(
+            onCancel = { overlay = "" },
+            onSave = { r ->
+                routeStore.save(r)
                 reload()
                 AlertScheduler.ensurePeriodicCheck(context)
                 overlay = ""
@@ -174,19 +197,24 @@ fun AppRoot() {
                 }
             },
             floatingActionButton = {
-                if (tab == 0 && trips.isNotEmpty()) {
+                if (tab == 0 && (trips.isNotEmpty() || routes.isNotEmpty())) {
                     ExtendedFloatingActionButton(
-                        onClick = { overlay = "new" },
+                        onClick = { newChoice = true },
                         icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                        text = { Text("Nouveau trajet") },
+                        text = { Text("Nouveau") },
                     )
                 }
             },
         ) { pad ->
             when (tab) {
                 0 -> TripsScreen(
-                    trips = trips, widgetIds = widgetIds, updater = updater, modifier = Modifier.padding(pad),
-                    onNew = { overlay = "new" },
+                    trips = trips, routes = routes, disruptions = disruptions,
+                    widgetIds = widgetIds, updater = updater, modifier = Modifier.padding(pad),
+                    onNew = { newChoice = true },
+                    onEditTripAlerts = { editTrip = it },
+                    onToggleRoute = { r, on -> routeStore.save(r.copy(enabled = on)); reload() },
+                    onEditRouteAlerts = { editRoute = it },
+                    onDeleteRoute = { routeStore.delete(it); reload() },
                     onOpen = { overlay = "trip:$it" },
                     onToggleWidget = { store.toggleOnWidget(it); reload() },
                     onToggleAlert = { trip, on -> store.save(trip.copy(enabled = on)); reload() },
@@ -196,6 +224,34 @@ fun AppRoot() {
                 else -> SettingsScreen(updater, Modifier.padding(pad), onDiagnostic = { overlay = "diag" })
             }
         }
+    }
+
+    if (newChoice) {
+        AlertDialog(
+            onDismissRequest = { newChoice = false },
+            title = { Text("Que voulez-vous ajouter ?") },
+            text = { Text("Un trajet suit une seule ligne. Un itinéraire enchaîne plusieurs lignes (ex. 84 → M2 → 32) et recalcule les correspondances.") },
+            confirmButton = { TextButton(onClick = { newChoice = false; overlay = "newroute" }) { Text("Itinéraire") } },
+            dismissButton = { TextButton(onClick = { newChoice = false; overlay = "new" }) { Text("Trajet simple") } },
+        )
+    }
+    editTrip?.let { t ->
+        AlertsDialog(
+            title = "Alertes · ${t.name}", initial = t.windows(),
+            onDismiss = { editTrip = null },
+            onSave = { w ->
+                val f = w.first()
+                store.save(t.copy(days = f.days, startMinute = f.startMinute, endMinute = f.endMinute, extraWindows = w.drop(1)))
+                editTrip = null; reload()
+            },
+        )
+    }
+    editRoute?.let { r ->
+        AlertsDialog(
+            title = "Alertes · ${r.name}", initial = r.windows,
+            onDismiss = { editRoute = null },
+            onSave = { w -> routeStore.save(r.copy(windows = w)); editRoute = null; reload() },
+        )
     }
 }
 
@@ -214,11 +270,17 @@ private val ScreenPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.d
 @Composable
 fun TripsScreen(
     trips: List<Trip>,
+    routes: List<Route>,
+    disruptions: List<Disruption>,
     widgetIds: List<String>,
     updater: UpdateController,
     modifier: Modifier,
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
+    onEditTripAlerts: (Trip) -> Unit,
+    onToggleRoute: (Route, Boolean) -> Unit,
+    onEditRouteAlerts: (Route) -> Unit,
+    onDeleteRoute: (String) -> Unit,
     onToggleWidget: (String) -> Unit,
     onToggleAlert: (Trip, Boolean) -> Unit,
     onDelete: (String) -> Unit,
@@ -240,12 +302,27 @@ fun TripsScreen(
         }
         val st = updater.state
         if (st is UpdateState.Available) item { UpdateBanner(updater, st.release) }
-        if (trips.isEmpty()) {
+        val myLines = (trips.map { it.stop.line } + routes.flatMap { r -> r.legs.map { it.stop.line } }).toSet()
+        val relevant = Disruptions.forLines(disruptions, myLines)
+        if (relevant.isNotEmpty()) item { DisruptionsCard(relevant) }
+        if (trips.isEmpty() && routes.isEmpty()) {
             item { EmptyState(onNew) }
         } else {
+            items(routes, key = { "r" + it.id }) { route ->
+                val lines = route.legs.map { it.stop.line }.toSet()
+                RouteCard(
+                    route = route, refreshKey = refreshKey,
+                    disruptionCount = Disruptions.forLines(disruptions, lines).size,
+                    onToggleAlert = { onToggleRoute(route, it) },
+                    onEditAlerts = { onEditRouteAlerts(route) },
+                    onDelete = { onDeleteRoute(route.id) },
+                )
+            }
             items(trips, key = { it.id }) { trip ->
                 TripCard(
                     trip = trip,
+                    disruptionCount = Disruptions.forLines(disruptions, setOf(trip.stop.line)).size,
+                    onEditAlerts = { onEditTripAlerts(trip) },
                     refreshKey = refreshKey,
                     onOpen = { onOpen(trip.id) },
                     onWidget = trip.id in widgetIds,
@@ -287,14 +364,14 @@ private fun EmptyState(onNew: () -> Unit) {
                 "Choisissez une ligne, un sens et un arrêt : l'app vous prévient quand il faut partir, et vos widgets affichent le prochain départ.",
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
             )
-            Button(onClick = onNew) { Text("Créer mon premier trajet") }
+            Button(onClick = onNew) { Text("Commencer") }
         }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TripCard(trip: Trip, refreshKey: Int, onOpen: () -> Unit, onWidget: Boolean, onToggleWidget: () -> Unit, onToggleAlert: (Boolean) -> Unit, onDelete: () -> Unit) {
+fun TripCard(trip: Trip, disruptionCount: Int, onEditAlerts: () -> Unit, refreshKey: Int, onOpen: () -> Unit, onWidget: Boolean, onToggleWidget: () -> Unit, onToggleAlert: (Boolean) -> Unit, onDelete: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var passages by remember { mutableStateOf<List<Passage>?>(null) }
     var error by remember { mutableStateOf(false) }
@@ -356,6 +433,7 @@ fun TripCard(trip: Trip, refreshKey: Int, onOpen: () -> Unit, onWidget: Boolean,
                 if (lm > 0) InfoPill("Partir à ${formatTime(leave)}", scheme.primaryContainer, scheme.onPrimaryContainer)
                 else InfoPill("Partez maintenant !", scheme.errorContainer, scheme.onErrorContainer)
                 InfoPill("Marche ${trip.walkMinutes} min + ${trip.bufferMinutes}", scheme.surfaceContainerHigh, scheme.onSurfaceVariant)
+                if (disruptionCount > 0) InfoPill("⚠ $disruptionCount info${if (disruptionCount > 1) "s" else ""} trafic", scheme.errorContainer, scheme.onErrorContainer)
             }
         }
 
@@ -363,7 +441,11 @@ fun TripCard(trip: Trip, refreshKey: Int, onOpen: () -> Unit, onWidget: Boolean,
         HorizontalDivider(color = scheme.outlineVariant)
         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Switch(checked = trip.enabled, onCheckedChange = onToggleAlert)
-            Text("  Alerte", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(
+                "  Alerte · ${trip.windows().size} plage${if (trip.windows().size > 1) "s" else ""}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f).clickable(onClick = onEditAlerts),
+            )
             FilterChip(
                 selected = onWidget,
                 onClick = onToggleWidget,

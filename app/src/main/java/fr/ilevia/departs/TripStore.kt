@@ -95,13 +95,39 @@ class TripStore(context: Context) {
 private val PARIS = ZoneId.of("Europe/Paris")
 
 /** Le trajet doit-il être surveillé à cet instant (jour + plage horaire) ? */
-fun Trip.isActiveAt(now: Instant): Boolean {
+fun Trip.isActiveAt(now: Instant): Boolean = enabled && windows().any { it.contains(now) }
+
+fun AlertWindow.contains(now: Instant): Boolean {
     val z = ZonedDateTime.ofInstant(now, PARIS)
-    if (!enabled || z.dayOfWeek.value !in days) return false
-    val minute = z.hour * 60 + z.minute
-    return minute in startMinute..endMinute
+    if (z.dayOfWeek.value !in days) return false
+    return (z.hour * 60 + z.minute) in startMinute..endMinute
 }
+
+fun Route.isActiveAt(now: Instant): Boolean = enabled && windows.any { it.contains(now) }
 
 /** Heure à laquelle il faut quitter son point de départ pour attraper [departure]. */
 fun Trip.leaveTime(departure: Instant): Instant =
     departure.minusSeconds((walkMinutes + bufferMinutes) * 60L)
+
+/** Stockage local des itinéraires. */
+class RouteStore(context: Context) {
+    private val prefs = context.applicationContext.getSharedPreferences("routes", Context.MODE_PRIVATE)
+
+    fun all(): List<Route> {
+        val arr = JSONArray(prefs.getString("routes", "[]") ?: "[]")
+        return (0 until arr.length()).mapNotNull { runCatching { Route.fromJson(arr.getJSONObject(it)) }.getOrNull() }
+    }
+
+    fun save(route: Route) {
+        val list = all().map { if (it.id == route.id) route else it }.let { if (it.any { r -> r.id == route.id }) it else it + route }
+        write(list)
+    }
+
+    fun delete(id: String) = write(all().filterNot { it.id == id })
+
+    private fun write(list: List<Route>) {
+        val arr = JSONArray()
+        list.forEach { arr.put(it.toJson()) }
+        prefs.edit().putString("routes", arr.toString()).apply()
+    }
+}
