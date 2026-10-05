@@ -7,29 +7,24 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Interroger l'API Ilévia
+      - name: Interroger les flux temps réel
         run: |
           python3 - <<'PY'
-          import json,urllib.request,collections,datetime
-          def note(m): print("::notice::"+m.replace("\n"," | ")[:900])
-          def get(u):
-              return json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"probe"}),timeout=60))
-          B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/"
-          cols=get(B+"collections?f=application/json")["collections"]
-          ev=[c["id"] for c in cols if "ilevia" in c["id"].lower() or "ilévia" in (c.get("title","")+c.get("description","")).lower()]
-          note("collections ilevia="+", ".join(ev))
-          for cid in ev:
+          import urllib.request,re
+          def note(m): print("::notice::"+m.replace("\n"," | ").replace("\r","")[:950])
+          for name,u in [("siri-sm","https://proxy.transport.data.gouv.fr/resource/ilevia-lille-siri-sm"),("gtfs-rt","https://proxy.transport.data.gouv.fr/resource/ilevia-lille-gtfs-rt")]:
               try:
-                  d=get(B+"collections/"+cid+"/items?f=application/json&limit=5000")
-                  p=[f.get("properties",{}) for f in d["features"]]
-                  keys=list(p[0].keys()) if p else []
-                  extra=""
-                  if p and "code_ligne" in p[0]:
-                      extra=" lignes="+str(len(set(r.get("code_ligne") for r in p)))
-                  note(f"{cid}: matched={d.get('numberMatched')} returned={d.get('numberReturned')}{extra} keys={','.join(keys)[:200]}")
+                  r=urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"probe"}),timeout=60)
+                  b=r.read()
+                  note(f"{name}: http={r.status} type={r.headers.get('content-type')} bytes={len(b)}")
+                  if name=="siri-sm":
+                      s=b.decode("utf8","replace")
+                      note("debut="+s[:700])
+                      i=s.find("MonitoredStopVisit")
+                      note("visit="+s[max(0,i-20):i+900])
+                      note("nb visites="+str(s.count("<MonitoredStopVisit>")+s.count("\"MonitoredStopVisit\"")))
+                  else:
+                      note("debut-hex="+b[:60].hex())
               except Exception as e:
-                  note(f"{cid}: erreur {e}")
-          d=get(B+"collections/dsp_ilevia:prochains_passages/items?f=application/json&limit=20000")
-          r=[f["properties"] for f in d["features"]]
-          note("prochains_passages lignes="+str(collections.Counter(x["code_ligne"] for x in r).most_common(10))+" max_modif="+str(max(x["date_modification"] for x in r)))
+                  note(f"{name}: erreur {e}")
           PY
