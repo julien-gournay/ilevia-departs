@@ -19,12 +19,7 @@ jobs:
           def rows(n): return csv.DictReader(io.TextIOWrapper(z.open(n),encoding="utf-8-sig"))
           routes={r["route_id"]:r for r in rows("routes.txt")}
           note("routes ex="+json.dumps(list(routes.values())[:2],ensure_ascii=False))
-          trips=list(rows("trips.txt")); note("trips cols="+",".join(trips[0].keys())+" n="+str(len(trips)))
-          hs=collections.defaultdict(set)
-          for t in trips:
-              hs[routes[t["route_id"]]["route_short_name"]].add((t.get("direction_id"),t.get("trip_headsign")))
-          for l in ("84","86","C1","L1","TRAM","R","E"): note(f"headsigns {l}="+str(sorted(hs.get(l,[]),key=str)))
-          stops=list(rows("stops.txt")); note("stops cols="+",".join(stops[0].keys())+" ex="+json.dumps(stops[:2],ensure_ascii=False))
+          stops=list(rows("stops.txt")); note("stops cols="+",".join(stops[0].keys())+" ex="+json.dumps(stops[:3],ensure_ascii=False))
           # feed
           B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/"
           g=lambda u: json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"probe"}),timeout=90))
