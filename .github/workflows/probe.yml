@@ -7,21 +7,32 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Perturbations
+      - name: GTFS
         run: |
+          curl -sSL -o gtfs.zip https://media.ilevia.fr/opendata/gtfs.zip
+          ls -la gtfs.zip
           python3 - <<'PY'
-          import urllib.request,json,collections
+          import zipfile,csv,io,json,urllib.request,collections
           def note(m): print("::notice::"+m.replace("\n"," | ")[:950])
+          z=zipfile.ZipFile("gtfs.zip")
+          note("fichiers="+", ".join(f"{i.filename}:{i.file_size//1024}Ko" for i in z.infolist()))
+          def rows(n): return csv.DictReader(io.TextIOWrapper(z.open(n),encoding="utf-8-sig"))
+          routes={r["route_id"]:r for r in rows("routes.txt")}
+          note("routes ex="+json.dumps(list(routes.values())[:2],ensure_ascii=False))
+          trips=list(rows("trips.txt")); note("trips cols="+",".join(trips[0].keys())+" n="+str(len(trips)))
+          hs=collections.defaultdict(set)
+          for t in trips:
+              hs[routes[t["route_id"]]["route_short_name"]].add((t.get("direction_id"),t.get("trip_headsign")))
+          for l in ("84","86","C1","L1","TRAM","R","E"): note(f"headsigns {l}="+str(sorted(hs.get(l,[]),key=str)))
+          stops=list(rows("stops.txt")); note("stops cols="+",".join(stops[0].keys())+" ex="+json.dumps(stops[:2],ensure_ascii=False))
+          # feed
           B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/"
-          for cid in ["dsp_ilevia:perturbations"]:
-              d=json.load(urllib.request.urlopen(urllib.request.Request(B+cid+"/items?f=application/json&limit=3000",headers={"User-Agent":"probe"}),timeout=60))
-              p=[f["properties"] for f in d["features"]]
-              note(f"{cid} n={len(p)} matched={d.get('numberMatched')}")
-              if p:
-                  note("keys="+",".join(p[0].keys()))
-                  note("ex1="+json.dumps(p[0],ensure_ascii=False))
-                  if len(p)>1: note("ex2="+json.dumps(p[1],ensure_ascii=False))
-                  for k in p[0]:
-                      if any(s in k for s in ("ligne","type","cause","effet","statut","severite","gravite")):
-                          note(k+"="+str(collections.Counter(str(x.get(k))[:40] for x in p).most_common(8)))
+          g=lambda u: json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"probe"}),timeout=90))
+          feed=[f["properties"] for f in g(B+"dsp_ilevia:prochains_passages/items?f=application/json&limit=20000")["features"]]
+          fs=collections.defaultdict(set)
+          for r in feed: fs[r["code_ligne"]].add(r["sens_ligne"])
+          for l in ("84","86","C1","L1","TRAM"): note(f"feed sens {l}="+str(sorted(fs.get(l,[]))))
+          note("feed ex id="+str([(r["identifiant_station"],r["nom_station"],r["commune"]) for r in feed[:3]]))
+          ap=g(B+"dsp_ilevia:arret_point/items?f=application/json&limit=6000")["features"]
+          note("arret_point ex="+json.dumps([a["properties"] for a in ap[:2]],ensure_ascii=False))
           PY
