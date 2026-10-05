@@ -87,54 +87,40 @@ data class AlertWindow(val days: Set<Int>, val startMinute: Int, val endMinute: 
     }
 }
 
-/** Un tronçon d'itinéraire : monter sur [stop] et rester environ [rideMinutes] minutes dans le véhicule. */
-data class Leg(val stop: StopSelection, val rideMinutes: Int)
-
 /**
- * Itinéraire à plusieurs tronçons (ex. 84 → M2 → 32), à faire à partir de [departMinute] (heure à l'arrêt de départ).
- * Le plan est recalculé en temps réel : si un véhicule a du retard et que la correspondance est ratée,
- * le prochain passage possible est choisi.
+ * Horaire de passage favori : « le 84 de 08:12 à Chemin des Vaches », les jours choisis.
+ * L'app suit le passage le plus proche de cet horaire, affiche son retard et prévient
+ * [notifyMinutes] minutes avant (et en cas de retard d'au moins [delayThreshold] min si [notifyDelay]).
  */
-data class Route(
+data class Favorite(
     val id: String,
     val name: String,
-    val legs: List<Leg>,
-    val walkMinutes: Int,
-    val transferMinutes: Int,
-    val bufferMinutes: Int,
-    val departMinute: Int,
-    val windows: List<AlertWindow>,
+    val stop: StopSelection,
+    val minute: Int,
+    val days: Set<Int>,
+    val notifyMinutes: Set<Int>,
+    val notifyDelay: Boolean,
+    val delayThreshold: Int,
     val enabled: Boolean = true,
 ) {
     fun toJson() = JSONObject().apply {
         put("id", id); put("name", name)
-        put("legs", JSONArray().also { a ->
-            legs.forEach { l ->
-                a.put(JSONObject().apply {
-                    put("station", l.stop.station); put("line", l.stop.line); put("direction", l.stop.direction); put("ride", l.rideMinutes)
-                })
-            }
-        })
-        put("walk", walkMinutes); put("transfer", transferMinutes); put("buffer", bufferMinutes); put("depart", departMinute)
-        put("windows", JSONArray().also { a -> windows.forEach { a.put(it.toJson()) } })
-        put("enabled", enabled)
+        put("station", stop.station); put("line", stop.line); put("direction", stop.direction)
+        put("minute", minute); put("days", days.joinToString(","))
+        put("notify", notifyMinutes.sorted().joinToString(","))
+        put("notifyDelay", notifyDelay); put("delayThreshold", delayThreshold); put("enabled", enabled)
     }
 
     companion object {
-        fun fromJson(o: JSONObject): Route {
-            val la = o.getJSONArray("legs")
-            val wa = o.getJSONArray("windows")
-            return Route(
-                id = o.getString("id"), name = o.getString("name"),
-                legs = (0 until la.length()).map {
-                    val l = la.getJSONObject(it)
-                    Leg(StopSelection(l.getString("station"), l.getString("line"), l.getString("direction")), l.getInt("ride"))
-                },
-                walkMinutes = o.getInt("walk"), transferMinutes = o.getInt("transfer"),
-                bufferMinutes = o.getInt("buffer"), departMinute = o.getInt("depart"),
-                windows = (0 until wa.length()).map { AlertWindow.fromJson(wa.getJSONObject(it)) },
-                enabled = o.optBoolean("enabled", true),
-            )
-        }
+        fun fromJson(o: JSONObject) = Favorite(
+            id = o.getString("id"), name = o.getString("name"),
+            stop = StopSelection(o.getString("station"), o.getString("line"), o.getString("direction")),
+            minute = o.getInt("minute"),
+            days = o.getString("days").split(",").filter { it.isNotBlank() }.map { it.toInt() }.toSet(),
+            notifyMinutes = o.optString("notify", "").split(",").filter { it.isNotBlank() }.map { it.toInt() }.toSet(),
+            notifyDelay = o.optBoolean("notifyDelay", true),
+            delayThreshold = o.optInt("delayThreshold", 3),
+            enabled = o.optBoolean("enabled", true),
+        )
     }
 }

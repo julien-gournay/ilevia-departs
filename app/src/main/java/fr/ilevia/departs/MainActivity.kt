@@ -115,11 +115,11 @@ fun AppRoot() {
     val store = remember { TripStore(context) }
     val updater = remember { UpdateController(context) }
     var trips by remember { mutableStateOf(store.all()) }
-    val routeStore = remember { RouteStore(context) }
-    var routes by remember { mutableStateOf(routeStore.all()) }
+    val favStore = remember { FavoriteStore(context) }
+    var favs by remember { mutableStateOf(favStore.all()) }
     var disruptions by remember { mutableStateOf<List<Disruption>>(emptyList()) }
     var editTrip by remember { mutableStateOf<Trip?>(null) }
-    var editRoute by remember { mutableStateOf<Route?>(null) }
+    var editFav by remember { mutableStateOf<Favorite?>(null) }
     var newChoice by remember { mutableStateOf(false) }
     var widgetIds by remember { mutableStateOf(store.widgetTripIds()) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -139,7 +139,7 @@ fun AppRoot() {
 
     fun reload() {
         trips = store.all()
-        routes = routeStore.all()
+        favs = favStore.all()
         widgetIds = store.widgetTripIds()
         WidgetUpdater.refreshAll(context)
     }
@@ -155,13 +155,15 @@ fun AppRoot() {
                 overlay = ""
             },
         )
-    } else if (overlay == "newroute") {
-        NewRouteScreen(
+    } else if (overlay == "newfav") {
+        BackHandler { overlay = "" }
+        NewFavoriteScreen(
             onCancel = { overlay = "" },
-            onSave = { r ->
-                routeStore.save(r)
+            onSave = { f ->
+                favStore.save(f)
                 reload()
                 AlertScheduler.ensurePeriodicCheck(context)
+                Thread { try { FavoriteTracker.tick(context) } catch (_: Exception) {} }.start()
                 overlay = ""
             },
         )
@@ -197,7 +199,7 @@ fun AppRoot() {
                 }
             },
             floatingActionButton = {
-                if (tab == 0 && (trips.isNotEmpty() || routes.isNotEmpty())) {
+                if (tab == 0 && (trips.isNotEmpty() || favs.isNotEmpty())) {
                     ExtendedFloatingActionButton(
                         onClick = { newChoice = true },
                         icon = { Icon(Icons.Filled.Add, contentDescription = null) },
@@ -208,13 +210,13 @@ fun AppRoot() {
         ) { pad ->
             when (tab) {
                 0 -> TripsScreen(
-                    trips = trips, routes = routes, disruptions = disruptions,
+                    trips = trips, favs = favs, disruptions = disruptions,
                     widgetIds = widgetIds, updater = updater, modifier = Modifier.padding(pad),
                     onNew = { newChoice = true },
                     onEditTripAlerts = { editTrip = it },
-                    onToggleRoute = { r, on -> routeStore.save(r.copy(enabled = on)); reload() },
-                    onEditRouteAlerts = { editRoute = it },
-                    onDeleteRoute = { routeStore.delete(it); reload() },
+                    onToggleFav = { f, on -> favStore.save(f.copy(enabled = on)); reload() },
+                    onEditFavAlerts = { editFav = it },
+                    onDeleteFav = { favStore.delete(it); reload() },
                     onOpen = { overlay = "trip:$it" },
                     onToggleWidget = { store.toggleOnWidget(it); reload() },
                     onToggleAlert = { trip, on -> store.save(trip.copy(enabled = on)); reload() },
@@ -230,8 +232,8 @@ fun AppRoot() {
         AlertDialog(
             onDismissRequest = { newChoice = false },
             title = { Text("Que voulez-vous ajouter ?") },
-            text = { Text("Un trajet suit une seule ligne. Un itinéraire enchaîne plusieurs lignes (ex. 84 → M2 → 32) et recalcule les correspondances.") },
-            confirmButton = { TextButton(onClick = { newChoice = false; overlay = "newroute" }) { Text("Itinéraire") } },
+            text = { Text("Un trajet affiche le prochain bus d'une ligne et vous dit quand partir. Un horaire favori suit un passage précis (ex. le 84 de 08:12) : retard, et notification à T-10, T-5 min…") },
+            confirmButton = { TextButton(onClick = { newChoice = false; overlay = "newfav" }) { Text("Horaire favori") } },
             dismissButton = { TextButton(onClick = { newChoice = false; overlay = "new" }) { Text("Trajet simple") } },
         )
     }
@@ -246,11 +248,10 @@ fun AppRoot() {
             },
         )
     }
-    editRoute?.let { r ->
-        AlertsDialog(
-            title = "Alertes · ${r.name}", initial = r.windows,
-            onDismiss = { editRoute = null },
-            onSave = { w -> routeStore.save(r.copy(windows = w)); editRoute = null; reload() },
+    editFav?.let { f ->
+        FavoriteAlertsDialog(
+            f, onDismiss = { editFav = null },
+            onSave = { nf -> favStore.save(nf); editFav = null; reload() },
         )
     }
 }
@@ -270,7 +271,7 @@ private val ScreenPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.d
 @Composable
 fun TripsScreen(
     trips: List<Trip>,
-    routes: List<Route>,
+    favs: List<Favorite>,
     disruptions: List<Disruption>,
     widgetIds: List<String>,
     updater: UpdateController,
@@ -278,9 +279,9 @@ fun TripsScreen(
     onNew: () -> Unit,
     onOpen: (String) -> Unit,
     onEditTripAlerts: (Trip) -> Unit,
-    onToggleRoute: (Route, Boolean) -> Unit,
-    onEditRouteAlerts: (Route) -> Unit,
-    onDeleteRoute: (String) -> Unit,
+    onToggleFav: (Favorite, Boolean) -> Unit,
+    onEditFavAlerts: (Favorite) -> Unit,
+    onDeleteFav: (String) -> Unit,
     onToggleWidget: (String) -> Unit,
     onToggleAlert: (Trip, Boolean) -> Unit,
     onDelete: (String) -> Unit,
@@ -302,20 +303,19 @@ fun TripsScreen(
         }
         val st = updater.state
         if (st is UpdateState.Available) item { UpdateBanner(updater, st.release) }
-        val myLines = (trips.map { it.stop.line } + routes.flatMap { r -> r.legs.map { it.stop.line } }).toSet()
+        val myLines = (trips.map { it.stop.line } + favs.map { it.stop.line }).toSet()
         val relevant = Disruptions.forLines(disruptions, myLines)
         if (relevant.isNotEmpty()) item { DisruptionsCard(relevant) }
-        if (trips.isEmpty() && routes.isEmpty()) {
+        if (trips.isEmpty() && favs.isEmpty()) {
             item { EmptyState(onNew) }
         } else {
-            items(routes, key = { "r" + it.id }) { route ->
-                val lines = route.legs.map { it.stop.line }.toSet()
-                RouteCard(
-                    route = route, refreshKey = refreshKey,
-                    disruptionCount = Disruptions.forLines(disruptions, lines).size,
-                    onToggleAlert = { onToggleRoute(route, it) },
-                    onEditAlerts = { onEditRouteAlerts(route) },
-                    onDelete = { onDeleteRoute(route.id) },
+            items(favs, key = { "f" + it.id }) { fav ->
+                FavoriteCard(
+                    f = fav, refreshKey = refreshKey,
+                    disruptionCount = Disruptions.forLines(disruptions, setOf(fav.stop.line)).size,
+                    onToggle = { onToggleFav(fav, it) },
+                    onEditAlerts = { onEditFavAlerts(fav) },
+                    onDelete = { onDeleteFav(fav.id) },
                 )
             }
             items(trips, key = { it.id }) { trip ->

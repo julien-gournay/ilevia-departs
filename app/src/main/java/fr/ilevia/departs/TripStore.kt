@@ -103,31 +103,51 @@ fun AlertWindow.contains(now: Instant): Boolean {
     return (z.hour * 60 + z.minute) in startMinute..endMinute
 }
 
-fun Route.isActiveAt(now: Instant): Boolean = enabled && windows.any { it.contains(now) }
 
 /** Heure à laquelle il faut quitter son point de départ pour attraper [departure]. */
 fun Trip.leaveTime(departure: Instant): Instant =
     departure.minusSeconds((walkMinutes + bufferMinutes) * 60L)
 
-/** Stockage local des itinéraires. */
-class RouteStore(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences("routes", Context.MODE_PRIVATE)
+/** Stockage local des horaires favoris + état des alertes déjà envoyées. */
+class FavoriteStore(context: Context) {
+    private val prefs = context.applicationContext.getSharedPreferences("favorites", Context.MODE_PRIVATE)
 
-    fun all(): List<Route> {
-        val arr = JSONArray(prefs.getString("routes", "[]") ?: "[]")
-        return (0 until arr.length()).mapNotNull { runCatching { Route.fromJson(arr.getJSONObject(it)) }.getOrNull() }
+    fun all(): List<Favorite> {
+        val arr = JSONArray(prefs.getString("favs", "[]") ?: "[]")
+        return (0 until arr.length()).mapNotNull { runCatching { Favorite.fromJson(arr.getJSONObject(it)) }.getOrNull() }
     }
 
-    fun save(route: Route) {
-        val list = all().map { if (it.id == route.id) route else it }.let { if (it.any { r -> r.id == route.id }) it else it + route }
-        write(list)
+    fun save(f: Favorite) {
+        val cur = all()
+        write(if (cur.any { it.id == f.id }) cur.map { if (it.id == f.id) f else it } else cur + f)
     }
 
     fun delete(id: String) = write(all().filterNot { it.id == id })
 
-    private fun write(list: List<Route>) {
+    private fun write(list: List<Favorite>) {
         val arr = JSONArray()
         list.forEach { arr.put(it.toJson()) }
-        prefs.edit().putString("routes", arr.toString()).apply()
+        prefs.edit().putString("favs", arr.toString()).apply()
+    }
+
+    // État du jour : alertes « T-N » déjà envoyées et dernier retard notifié (clé = jour).
+    fun sentMinutes(id: String, day: String): Set<Int> {
+        val v = prefs.getString("sent_$id", null) ?: return emptySet()
+        val (d, list) = v.split("|", limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+        return if (d == day) list.split(",").filter { it.isNotBlank() }.map { it.toInt() }.toSet() else emptySet()
+    }
+
+    fun markSent(id: String, day: String, mins: Set<Int>) {
+        prefs.edit().putString("sent_$id", day + "|" + (sentMinutes(id, day) + mins).joinToString(",")).apply()
+    }
+
+    fun lastDelay(id: String, day: String): Int? {
+        val v = prefs.getString("delay_$id", null) ?: return null
+        val p = v.split("|")
+        return if (p.size == 2 && p[0] == day) p[1].toIntOrNull() else null
+    }
+
+    fun setLastDelay(id: String, day: String, d: Int) {
+        prefs.edit().putString("delay_$id", "$day|$d").apply()
     }
 }

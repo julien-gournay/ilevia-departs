@@ -42,6 +42,21 @@ object Disruptions {
         return list
     }
 
+    /** Convertit le HTML des messages Ilévia en texte lisible (paragraphes, listes, entités). */
+    internal fun cleanHtml(raw: String): String {
+        val prepared = raw
+            .replace(Regex("(?i)<\\s*br\\s*/?>"), "\n")
+            .replace(Regex("(?i)</\\s*(p|div|h[1-6]|tr)\\s*>"), "\n")
+            .replace(Regex("(?i)<\\s*li[^>]*>"), "\n• ")
+        val text = androidx.core.text.HtmlCompat.fromHtml(prepared, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+        return text
+            .replace('\u200B', ' ').replace('\uFFFC', ' ').replace('\u00A0', ' ')
+            .replace(Regex("[ \\t]+"), " ")
+            .replace(Regex(" ?\\n ?"), "\n")
+            .replace(Regex("\\n{3,}"), "\n\n")
+            .trim()
+    }
+
     fun forLines(all: List<Disruption>, lines: Set<String>): List<Disruption> =
         all.filter { d -> lines.any { it.equals(d.line, true) } }
 }
