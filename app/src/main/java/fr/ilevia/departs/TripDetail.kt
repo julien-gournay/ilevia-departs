@@ -164,7 +164,7 @@ private fun androidx.compose.foundation.layout.RowScope.Column2(trip: Trip) {
     val scheme = MaterialTheme.colorScheme
     Column(Modifier.weight(1f)) {
         Text("→ ${pretty(trip.stop.direction)}", style = MaterialTheme.typography.titleMedium)
-        Text(pretty(trip.stop.station), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+        Text(stopLabel(trip.stop.station, trip.stop.line), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
         Text(
             "Marche ${trip.walkMinutes} min + ${trip.bufferMinutes} min de marge",
             style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,

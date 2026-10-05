@@ -10,6 +10,7 @@ data class Passage(
     val line: String,
     val direction: String,
     val time: Instant,
+    val commune: String? = null,
 )
 
 /** Identifie un « arrêt + ligne + sens » choisi par l'utilisateur. */
@@ -21,9 +22,9 @@ data class StopSelection(
     fun label() = "$line → $direction · $station"
 
     fun matches(p: Passage) =
-        p.station.equals(station, true) &&
+        norm(p.station) == norm(station) &&
             p.line.equals(line, true) &&
-            p.direction.equals(direction, true)
+            norm(p.direction) == norm(direction)
 }
 
 /**
@@ -124,3 +125,11 @@ data class Favorite(
         )
     }
 }
+
+/** Nom normalisé pour comparer des libellés (accents, casse, ponctuation). */
+fun norm(s: String): String =
+    java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "")
+        .lowercase()
+        .replace(Regex("[^a-z0-9]+"), " ")
+        .trim()

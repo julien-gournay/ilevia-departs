@@ -161,7 +161,7 @@ object Notifier {
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_directions)
             .setContentTitle("Il est temps de partir ! (${trip.name})")
-            .setContentText("${trip.stop.line} → ${trip.stop.direction} à ${trip.stop.station} : départ à ${formatTime(departure)}")
+            .setContentText("${trip.stop.line} → ${trip.stop.direction} à ${stopLabel(trip.stop.station, trip.stop.line)} : départ à ${formatTime(departure)}")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setContentIntent(open)

@@ -136,7 +136,7 @@ fun NewFavoriteScreen(onCancel: () -> Unit, onSave: (Favorite) -> Unit) {
     LaunchedEffect(loadKey) {
         error = null
         try { data = withContext(Dispatchers.IO) { IleviaApi.fetchAll(force = true) } }
-        catch (e: Exception) { error = e.message ?: "Erreur réseau" }
+        catch (e: Exception) { if (StopIndex.lines.isNotEmpty()) data = emptyList() else error = e.message ?: "Erreur réseau" }
     }
     BackHandler(enabled = stop != null) { stop = null }
 
@@ -184,7 +184,7 @@ fun NewFavoriteScreen(onCancel: () -> Unit, onSave: (Favorite) -> Unit) {
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text("→ ${pretty(sel.direction)}", style = MaterialTheme.typography.titleMedium)
-                                Text(pretty(sel.station), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+                                Text(stopLabel(sel.station, sel.line), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -278,7 +278,7 @@ fun FavoriteCard(
             Column(Modifier.weight(1f)) {
                 Text(f.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("→ ${pretty(f.stop.direction)}", style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(pretty(f.stop.station), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(stopLabel(f.stop.station, f.stop.line), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("Horaire", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)

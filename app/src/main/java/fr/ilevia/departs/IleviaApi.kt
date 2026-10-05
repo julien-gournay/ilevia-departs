@@ -45,6 +45,7 @@ object IleviaApi {
     /** Lignes et nombre de passages présents dans le dernier flux reçu (pour expliquer l'absence de données). */
     @Volatile var feedLines: Set<String> = emptySet()
     @Volatile var feedSize: Int = 0
+    @Volatile var feedCommunes: Map<String, String> = emptyMap()
 
     fun lineInFeed(line: String) = feedLines.contains(line.trim().uppercase())
 
@@ -64,6 +65,7 @@ object IleviaApi {
                     cache = now to list
                     feedLines = list.map { it.line.uppercase() }.toSet()
                     feedSize = list.size
+                    feedCommunes = list.filter { it.commune != null }.associate { (it.line.uppercase() + "|" + norm(it.station)) to it.commune!! }
                     lastFetched = fetched
                     return list
                 }
@@ -157,7 +159,7 @@ object IleviaApi {
         val line = r.firstString(LINE_KEYS) ?: return@mapNotNull null
         val direction = r.firstString(DIRECTION_KEYS) ?: return@mapNotNull null
         val time = r.firstString(TIME_KEYS)?.let(::parseTime) ?: return@mapNotNull null
-        Passage(station.trim(), line.trim(), direction.trim(), time)
+        Passage(station.trim(), line.trim(), direction.trim(), time, r.optString("commune", "").trim().takeIf { it.isNotEmpty() && it != "null" })
     }
 
     /**

@@ -233,7 +233,7 @@ object BigRenderer : Renderer {
         val keepDep = c.showDep && panelLines >= (if (keepLeave) 3 else 2)
 
         v.badge(R.id.big_badge, d.trip.stop.line, round = false)
-        v.text(R.id.big_station, if (c.showStation && w >= 110f) pretty(d.trip.stop.station) else null)
+        v.text(R.id.big_station, if (c.showStation && w >= 110f) stopLabel(d.trip.stop.station, d.trip.stop.line) else null)
         v.setTextViewText(R.id.big_dir, "→ " + pretty(d.trip.stop.direction))
         v.sp(R.id.big_num, numSz)
         v.sp(R.id.big_unit, (numSz * 0.27f).coerceIn(11f, 30f))
@@ -302,7 +302,7 @@ object BoardRenderer : Renderer {
             v.sp(SUB[i], subSz); v.sp(MINS[i], minsSz); v.sp(LEAVE[i], subSz)
 
             val next = d.next
-            val station = if (c.showStation) pretty(d.trip.stop.station) else null
+            val station = if (c.showStation) stopLabel(d.trip.stop.station, d.trip.stop.line) else null
             when {
                 d.passages == null -> { v.text(SUB[i], station); v.setTextViewText(MINS[i], "Hors ligne"); v.text(LEAVE[i], null) }
                 next == null -> { v.text(SUB[i], station); v.setTextViewText(MINS[i], "—"); v.text(LEAVE[i], null) }
@@ -365,7 +365,7 @@ object GridRenderer : Renderer {
                 v.sp(BADGE[slot], badgeSz * 0.46f)
                 v.sp(MINS[slot], minsSz); v.sp(DEP[slot], depSz); v.sp(TITLE[slot], titleSz); v.sp(STATION[slot], stationSz)
                 v.setTextViewText(TITLE[slot], pretty(d.trip.stop.direction))
-                v.text(STATION[slot], if (stationShown) pretty(d.trip.stop.station) else null)
+                v.text(STATION[slot], if (stationShown) stopLabel(d.trip.stop.station, d.trip.stop.line) else null)
                 val next = d.next
                 when {
                     d.passages == null -> { v.setTextViewText(MINS[slot], "Hors ligne"); v.text(DEP[slot], null) }

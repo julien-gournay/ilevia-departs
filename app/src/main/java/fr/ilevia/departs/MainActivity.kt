@@ -101,6 +101,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         LineColors.init(this)
+        StopIndex.init(this)
         Notifier.ensureChannel(this)
         AlertScheduler.ensurePeriodicCheck(this)
         setContent { IleviaTheme { AppRoot() } }
@@ -398,7 +399,7 @@ fun TripCard(trip: Trip, disruptionCount: Int, onEditAlerts: () -> Unit, refresh
             Column(Modifier.weight(1f)) {
                 Text(trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("→ ${pretty(trip.stop.direction)}", style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(pretty(trip.stop.station), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(stopLabel(trip.stop.station, trip.stop.line), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(8.dp))
             Column(horizontalAlignment = Alignment.End) {
@@ -628,7 +629,7 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
         error = null
         scope.launch {
             try { data = withContext(Dispatchers.IO) { IleviaApi.fetchAll(force = true) } }
-            catch (e: Exception) { error = e.message ?: "Erreur réseau" }
+            catch (e: Exception) { if (StopIndex.lines.isNotEmpty()) data = emptyList() else error = e.message ?: "Erreur réseau" }
         }
     }
     LaunchedEffect(Unit) { load() }
@@ -664,7 +665,7 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
                 if (error != null) Button(onClick = { load() }) { Text("Réessayer") } else CircularProgressIndicator()
             } else when (step) {
                 0 -> {
-                    val lines = all.map { it.line }.distinct().sortedWith(compareBy({ it.toIntOrNull() ?: Int.MAX_VALUE }, { it }))
+                    val lines = lineChoices(all)
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(76.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -677,7 +678,7 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
                     }
                 }
                 1 -> {
-                    val dirs = all.filter { it.line == line }.map { it.direction }.distinct().sorted()
+                    val dirs = directionChoices(all, line ?: "")
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                         items(dirs) { d ->
                             AppCard(Modifier.fillMaxWidth(), onClick = { direction = d; goTo(2) }) {
@@ -697,8 +698,8 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
                         leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    val stops = all.filter { it.line == line && it.direction == direction }.map { it.station }.distinct().sorted()
-                        .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+                    val stops = stopChoices(all, line ?: "", direction ?: "")
+                        .filter { query.isBlank() || norm(stopLabel(it, line)).contains(norm(query)) }
                     LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)) {
                         items(stops) { s ->
                             Row(
@@ -707,7 +708,7 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
                             ) {
                                 Icon(Icons.Filled.Place, contentDescription = null, tint = scheme.primary)
                                 Spacer(Modifier.width(12.dp))
-                                Text(pretty(s), style = MaterialTheme.typography.bodyLarge)
+                                Text(stopLabel(s, line), style = MaterialTheme.typography.bodyLarge)
                             }
                             HorizontalDivider(color = scheme.outlineVariant)
                         }
@@ -720,7 +721,7 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
                             Spacer(Modifier.width(12.dp))
                             Column {
                                 Text("→ ${pretty(direction ?: "")}", style = MaterialTheme.typography.titleMedium)
-                                Text(pretty(station ?: ""), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+                                Text(stopLabel(station ?: "", line), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
                             }
                         }
                     }

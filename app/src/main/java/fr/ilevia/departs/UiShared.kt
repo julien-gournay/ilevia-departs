@@ -207,7 +207,7 @@ fun StopPicker(all: List<Passage>, title: String, onPicked: (StopSelection) -> U
         Spacer(Modifier.height(12.dp))
         when (step) {
             0 -> {
-                val lines = all.map { it.line }.distinct().sortedWith(compareBy({ it.toIntOrNull() ?: Int.MAX_VALUE }, { it }))
+                val lines = lineChoices(all)
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(76.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -218,7 +218,7 @@ fun StopPicker(all: List<Passage>, title: String, onPicked: (StopSelection) -> U
                 }
             }
             1 -> {
-                val dirs = all.filter { it.line == line }.map { it.direction }.distinct().sorted()
+                val dirs = directionChoices(all, line ?: "")
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
                     items(dirs) { d ->
                         AppCard(Modifier.fillMaxWidth(), onClick = { direction = d; step = 2; query = "" }) {
@@ -238,8 +238,8 @@ fun StopPicker(all: List<Passage>, title: String, onPicked: (StopSelection) -> U
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                val stops = all.filter { it.line == line && it.direction == direction }.map { it.station }.distinct().sorted()
-                    .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+                val stops = stopChoices(all, line ?: "", direction ?: "")
+                        .filter { query.isBlank() || norm(stopLabel(it, line)).contains(norm(query)) }
                 LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)) {
                     items(stops) { s ->
                         Row(
@@ -248,7 +248,7 @@ fun StopPicker(all: List<Passage>, title: String, onPicked: (StopSelection) -> U
                         ) {
                             Icon(Icons.Filled.Place, contentDescription = null, tint = scheme.primary)
                             Spacer(Modifier.width(12.dp))
-                            Text(pretty(s), style = MaterialTheme.typography.bodyLarge)
+                            Text(stopLabel(s, line), style = MaterialTheme.typography.bodyLarge)
                         }
                         HorizontalDivider(color = scheme.outlineVariant)
                     }
