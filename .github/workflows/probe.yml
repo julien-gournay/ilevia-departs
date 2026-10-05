@@ -10,21 +10,17 @@ jobs:
       - name: Interroger les flux temps réel
         run: |
           python3 - <<'PY'
-          import urllib.request,re
+          import urllib.request,re,collections
           def note(m): print("::notice::"+m.replace("\n"," | ").replace("\r","")[:950])
-          for name,u in [("siri-sm","https://proxy.transport.data.gouv.fr/resource/ilevia-lille-siri-sm"),("gtfs-rt","https://proxy.transport.data.gouv.fr/resource/ilevia-lille-gtfs-rt")]:
-              try:
-                  r=urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"probe"}),timeout=60)
-                  b=r.read()
-                  note(f"{name}: http={r.status} type={r.headers.get('content-type')} bytes={len(b)}")
-                  if name=="siri-sm":
-                      s=b.decode("utf8","replace")
-                      note("debut="+s[:700])
-                      i=s.find("MonitoredStopVisit")
-                      note("visit="+s[max(0,i-20):i+900])
-                      note("nb visites="+str(s.count("<MonitoredStopVisit>")+s.count("\"MonitoredStopVisit\"")))
-                  else:
-                      note("debut-hex="+b[:60].hex())
-              except Exception as e:
-                  note(f"{name}: erreur {e}")
+          g=lambda u: urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"probe"}),timeout=90).read()
+          s=g("https://proxy.transport.data.gouv.fr/resource/ilevia-lille-siri-sm").decode("utf8","replace")
+          rec=re.findall(r"<siri:RecordedAtTime>([^<]+)",s)
+          exp=re.findall(r"<siri:ExpectedDepartureTime>([^<]+)",s)+re.findall(r"<siri:ExpectedArrivalTime>([^<]+)",s)
+          note(f"siri visites={len(rec)} recorded min={min(rec)} max={max(rec)}")
+          note(f"siri expected n={len(exp)} min={min(exp) if exp else None} max={max(exp) if exp else None}")
+          lines=collections.Counter(re.findall(r"<siri:LineRef>ILEVIA:Line::([^:]+):",s))
+          note("siri lignes="+str(len(lines))+" "+",".join(sorted(lines))[:500])
+          b=g("https://proxy.transport.data.gouv.fr/resource/ilevia-lille-gtfs-rt")
+          txt=b.decode("latin1")
+          note("gtfs-rt ids="+",".join(sorted(set(re.findall(r"[A-Z]{3}[0-9A-Z]{3,}",txt)))[:40]))
           PY
