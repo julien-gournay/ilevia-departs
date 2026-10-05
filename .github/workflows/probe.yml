@@ -7,27 +7,20 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: GTFS
+      - uses: actions/checkout@v4
+      - name: Index
         run: |
-          curl -sSL -o gtfs.zip https://media.ilevia.fr/opendata/gtfs.zip
-          ls -la gtfs.zip
+          python3 tools/build_stops.py
           python3 - <<'PY'
-          import zipfile,csv,io,json,urllib.request,collections
+          import json,collections
           def note(m): print("::notice::"+m.replace("\n"," | ")[:950])
-          z=zipfile.ZipFile("gtfs.zip")
-          note("fichiers="+", ".join(f"{i.filename}:{i.file_size//1024}Ko" for i in z.infolist()))
-          def rows(n): return csv.DictReader(io.TextIOWrapper(z.open(n),encoding="utf-8-sig"))
-          routes={r["route_id"]:r for r in rows("routes.txt")}
-          note("routes ex="+json.dumps(list(routes.values())[:2],ensure_ascii=False))
-          stops=list(rows("stops.txt")); note("stops cols="+",".join(stops[0].keys())+" ex="+json.dumps(stops[:3],ensure_ascii=False))
-          # feed
-          B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/"
-          g=lambda u: json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"probe"}),timeout=90))
-          feed=[f["properties"] for f in g(B+"dsp_ilevia:prochains_passages/items?f=application/json&limit=20000")["features"]]
-          fs=collections.defaultdict(set)
-          for r in feed: fs[r["code_ligne"]].add(r["sens_ligne"])
-          for l in ("84","86","C1","L1","TRAM"): note(f"feed sens {l}="+str(sorted(fs.get(l,[]))))
-          note("feed ex id="+str([(r["identifiant_station"],r["nom_station"],r["commune"]) for r in feed[:3]]))
-          ap=g(B+"dsp_ilevia:arret_point/items?f=application/json&limit=6000")["features"]
-          note("arret_point ex="+json.dumps([a["properties"] for a in ap[:2]],ensure_ascii=False))
+          d=json.load(open("app/src/main/assets/stops_index.json"))
+          st=d["stops"]
+          com=collections.Counter(c for n,c in st)
+          note("communes distinctes="+str(len(com))+" vides="+str(com.get("",0)))
+          note("plus longues communes="+str(sorted(com,key=len,reverse=True)[:14]))
+          note("plus longs noms="+str(sorted({n for n,c in st},key=len,reverse=True)[:14]))
+          note("noms avec - ou ( ou / ="+str([n for n,c in st if any(x in n for x in "-(/")][:20]))
+          note("communes avec chiffres/tirets="+str([c for c in com if any(x.isdigit() for x in c)][:15]))
+          note("ex Tourcoing="+str([s for s in st if "tourcoing" in s[0].lower()][:8]))
           PY
