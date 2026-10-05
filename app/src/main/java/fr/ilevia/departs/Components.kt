@@ -34,7 +34,16 @@ private val LINE_COLORS = listOf(
     0xFF1B8A2A, 0xFFD81B60, 0xFF1565C0, 0xFFF57C00, 0xFF6A1B9A, 0xFF00838F, 0xFFC62828, 0xFF455A64,
 ).map { Color(it) }
 
-fun lineColor(line: String): Color = LINE_COLORS[(line.toIntOrNull() ?: abs(line.hashCode())) % LINE_COLORS.size]
+fun lineColor(line: String): Color {
+    LineColors.version // lecture : redessine l'interface quand les couleurs officielles arrivent
+    LineColors.bg(line)?.let { return Color(it) }
+    return LINE_COLORS[(line.toIntOrNull() ?: abs(line.hashCode())) % LINE_COLORS.size]
+}
+
+fun lineTextColor(line: String): Color {
+    LineColors.version
+    return LineColors.fg(line)?.let { Color(it) } ?: Color.White
+}
 
 /** Pastille ronde colorée avec le numéro de ligne. */
 @Composable
@@ -42,7 +51,7 @@ fun LineBadge(line: String, size: Dp = 44.dp, modifier: Modifier = Modifier) {
     Box(modifier.size(size).clip(CircleShape).background(lineColor(line)), contentAlignment = Alignment.Center) {
         Text(
             line,
-            color = Color.White,
+            color = lineTextColor(line),
             fontWeight = FontWeight.Bold,
             fontSize = (size.value * (if (line.length > 2) 0.30f else 0.38f)).sp,
             maxLines = 1,

@@ -116,7 +116,7 @@ fun TripDetailScreen(trip: Trip, onClose: () -> Unit) {
             } else {
                 item { Text("Prochains départs", style = MaterialTheme.typography.titleMedium) }
                 if (d.mine.isEmpty()) {
-                    item { Text("Aucun passage annoncé pour le moment.", color = scheme.onSurfaceVariant) }
+                    item { Text(noDataMessage(trip.stop.line), color = scheme.onSurfaceVariant) }
                 } else {
                     item {
                         AppCard(Modifier.fillMaxWidth()) {
@@ -199,3 +199,10 @@ private fun minLabel(now: Instant, t: Instant): String {
     val m = Duration.between(now, t).toMinutes()
     return if (m <= 0) "Proche" else "$m min"
 }
+
+/** Explique pourquoi aucun passage n'est affiché. */
+internal fun noDataMessage(line: String): String =
+    if (IleviaApi.feedSize > 0 && !IleviaApi.lineInFeed(line))
+        "Aucune donnée reçue pour la ligne $line : le flux temps réel public d'Ilévia ne la publie pas en ce moment (${IleviaApi.feedSize} passages reçus au total). L'app officielle utilise une autre source, non publique."
+    else
+        "Aucun passage annoncé pour cet arrêt pour le moment."

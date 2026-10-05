@@ -5,6 +5,8 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Build
 import android.util.TypedValue
 import android.view.View
@@ -55,6 +57,7 @@ object WidgetUpdater {
         if (targets.isEmpty()) { onDone?.invoke(); return }
         Thread {
           try {
+            LineColors.init(app)
             val store = TripStore(app)
             val fetched = try { IleviaApi.fetchAll(force = force); true } catch (e: Exception) { false }
             val now = Instant.now()
@@ -107,7 +110,15 @@ private fun RemoteViews.show(id: Int, visible: Boolean) =
 
 private fun RemoteViews.badge(id: Int, line: String, round: Boolean) {
     setTextViewText(id, line)
-    setInt(id, "setBackgroundResource", (if (round) BADGE_ROUND else BADGE_RECT)[colorIndex(line)])
+    val bg = LineColors.bg(line)
+    if (bg != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        setInt(id, "setBackgroundResource", if (round) R.drawable.badge_round_white else R.drawable.badge_white)
+        setColorStateList(id, "setBackgroundTintList", ColorStateList.valueOf(bg))
+        setTextColor(id, LineColors.fg(line) ?: Color.WHITE)
+    } else {
+        setInt(id, "setBackgroundResource", (if (round) BADGE_ROUND else BADGE_RECT)[colorIndex(line)])
+        setTextColor(id, Color.WHITE)
+    }
 }
 
 private fun minutesUntil(c: WidgetCtx, p: Passage): Long = Duration.between(c.now, p.time).toMinutes().coerceAtLeast(0)

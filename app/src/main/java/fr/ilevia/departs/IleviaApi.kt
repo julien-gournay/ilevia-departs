@@ -42,6 +42,12 @@ object IleviaApi {
 
     private data class Fetched(val endpoint: String, val pages: Int, val rows: List<JSONObject>)
 
+    /** Lignes et nombre de passages présents dans le dernier flux reçu (pour expliquer l'absence de données). */
+    @Volatile var feedLines: Set<String> = emptySet()
+    @Volatile var feedSize: Int = 0
+
+    fun lineInFeed(line: String) = feedLines.contains(line.trim().uppercase())
+
     @Volatile private var cache: Pair<Long, List<Passage>>? = null
     @Volatile private var lastFetched: Fetched? = null
 
@@ -56,6 +62,8 @@ object IleviaApi {
                 val list = toPassages(fetched.rows).distinct()
                 if (list.isNotEmpty()) {
                     cache = now to list
+                    feedLines = list.map { it.line.uppercase() }.toSet()
+                    feedSize = list.size
                     lastFetched = fetched
                     return list
                 }

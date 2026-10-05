@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        LineColors.init(this)
         Notifier.ensureChannel(this)
         AlertScheduler.ensurePeriodicCheck(this)
         setContent { IleviaTheme { AppRoot() } }
@@ -339,6 +340,11 @@ fun TripCard(trip: Trip, refreshKey: Int, onOpen: () -> Unit, onWidget: Boolean,
                     }
                 }
             }
+        }
+
+        if (passages != null && next == null) {
+            Spacer(Modifier.height(10.dp))
+            Text(noDataMessage(trip.stop.line), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
         }
 
         if (next != null) {
