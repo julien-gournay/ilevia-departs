@@ -166,12 +166,15 @@ object BandRenderer : Renderer {
         val tileW = (c.widthDp - 12f) / count
         val innerH = (c.heightDp - 12f).coerceAtLeast(30f)
 
-        val lineSz = (innerH * 0.15f).coerceIn(9f, 13f)
+        var lineSz = (innerH * 0.15f).coerceIn(9f, 13f)
         val minsSz = minOf((innerH * 0.36f).coerceIn(15f, 42f), ((tileW - 56f) / 1.2f).coerceAtLeast(12f))
         val rowH = maxOf(minsSz * 1.25f, 20f)
-        val maxLines = ((innerH - rowH) / (lineSz * 1.3f)).toInt().coerceIn(0, 3)
-        // Lignes voulues (0 = arrêt, 1 = départ, 2 = partir) ; on retire d'abord l'arrêt, puis le départ.
-        var wanted = listOfNotNull(if (c.showStation) 0 else null, if (c.showDep) 1 else null, if (c.showLeave) 2 else null)
+        // Lignes voulues (0 = arrêt, 1 = départ, 2 = partir). L'arrêt est prioritaire : si la place manque,
+        // on réduit d'abord la taille du texte, puis on retire l'heure de départ, puis « partir » — jamais l'arrêt en premier.
+        var wanted = listOfNotNull(if (c.showDep) 1 else null, if (c.showLeave) 2 else null, if (c.showStation) 0 else null)
+        fun linesFit(sz: Float) = ((innerH - rowH) / (sz * 1.25f)).toInt().coerceIn(0, 3)
+        if (wanted.size > linesFit(lineSz)) lineSz = maxOf(8f, lineSz * 0.85f)
+        val maxLines = linesFit(lineSz)
         while (wanted.size > maxLines) wanted = wanted.drop(1)
 
         for (i in 0 until 5) {
@@ -349,7 +352,7 @@ object GridRenderer : Renderer {
         val stationSz = (titleSz * 0.82f).coerceAtLeast(9f)
         val depSz = (pillH * 0.17f).coerceIn(9f, 13f)
         val badgeSz = (pillH * 0.42f).coerceIn(20f, 34f)
-        val stationShown = c.showStation && pillH >= 54f
+        val stationShown = c.showStation && pillH >= 40f
 
         for (r in 0 until 3) {
             var rowVisible = false
