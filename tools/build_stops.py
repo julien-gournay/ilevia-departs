@@ -15,7 +15,12 @@ def main():
     raw = {}
     for s in rows("stops.txt"):
         m = re.search(r"\b\d{5}\s+(.+)$", s.get("stop_desc") or "")
-        raw[s["stop_id"]] = (s["stop_name"].strip(), (m.group(1).strip() if m else ""), s.get("parent_station") or "")
+        commune = m.group(1) if m else ""
+        # « TOURCOING - A L'OPPOSÉ DU N° 45 » → « TOURCOING » : on ne garde que la ville, sans les consignes de position.
+        commune = re.split(r"\s+-\s+|\s*\(", commune)[0]
+        commune = re.sub(r"\s+", " ", commune).strip()
+        name = re.sub(r"\s+", " ", s["stop_name"]).strip()
+        raw[s["stop_id"]] = (name, commune, s.get("parent_station") or "")
 
     table, index = [], {}
     def stop_idx(sid):

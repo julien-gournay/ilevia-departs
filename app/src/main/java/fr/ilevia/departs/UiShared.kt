@@ -74,6 +74,27 @@ internal fun AlertWindow.label(): String {
 
 // ───────────────────────── Plages d'alerte ─────────────────────────
 
+/** Saisie d'une heure précise : heures ±1, minutes ±1 et ±5 (de 00:00 à 23:59). */
+@Composable
+fun TimeStepper(label: String, minute: Int, onChange: (Int) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val h = minute / 60
+    val m = minute % 60
+    fun set(nh: Int, nm: Int) = onChange((nh.coerceIn(0, 23) * 60 + nm.coerceIn(0, 59)))
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.width(28.dp))
+        TextButton(onClick = { set(h - 1, m) }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("−") }
+        Text("%02d".format(h), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        TextButton(onClick = { set(h + 1, m) }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("+") }
+        Text(":", style = MaterialTheme.typography.titleLarge)
+        TextButton(onClick = { set(h, m - 5) }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("−5") }
+        TextButton(onClick = { set(h, m - 1) }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("−1") }
+        Text("%02d".format(m), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        TextButton(onClick = { set(h, m + 1) }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("+1") }
+        TextButton(onClick = { set(h, m + 5) }, contentPadding = PaddingValues(horizontal = 6.dp)) { Text("+5") }
+    }
+}
+
 /** Édition d'une liste de plages d'alerte (jours + heures au pas de 5 min). */
 @Composable
 fun WindowsEditor(windows: List<AlertWindow>, onChange: (List<AlertWindow>) -> Unit) {
@@ -98,23 +119,13 @@ fun WindowsEditor(windows: List<AlertWindow>, onChange: (List<AlertWindow>) -> U
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("De ${fmtMinute(w.startMinute)} à ${fmtMinute(w.endMinute)}", style = MaterialTheme.typography.bodyLarge, color = scheme.primary)
-                Slider(
-                    value = w.startMinute.toFloat(),
-                    onValueChange = { v ->
-                        val s = v.toInt().coerceAtMost(w.endMinute)
-                        onChange(windows.mapIndexed { j, x -> if (j == i) x.copy(startMinute = s) else x })
-                    },
-                    valueRange = 0f..1435f, steps = 286,
-                )
-                Slider(
-                    value = w.endMinute.toFloat(),
-                    onValueChange = { v ->
-                        val e = v.toInt().coerceAtLeast(w.startMinute)
-                        onChange(windows.mapIndexed { j, x -> if (j == i) x.copy(endMinute = e) else x })
-                    },
-                    valueRange = 0f..1435f, steps = 286,
-                )
+                Spacer(Modifier.height(4.dp))
+                TimeStepper("De", w.startMinute) { s ->
+                    onChange(windows.mapIndexed { j, x -> if (j == i) x.copy(startMinute = s, endMinute = maxOf(x.endMinute, s)) else x })
+                }
+                TimeStepper("À", w.endMinute) { e ->
+                    onChange(windows.mapIndexed { j, x -> if (j == i) x.copy(endMinute = e, startMinute = minOf(x.startMinute, e)) else x })
+                }
             }
         }
         OutlinedButton(

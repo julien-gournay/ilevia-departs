@@ -159,6 +159,7 @@ fun AppRoot() {
     } else if (overlay == "newfav") {
         BackHandler { overlay = "" }
         NewFavoriteScreen(
+            trips = trips,
             onCancel = { overlay = "" },
             onSave = { f ->
                 favStore.save(f)
@@ -621,9 +622,7 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
     var name by remember { mutableStateOf("") }
     var walk by remember { mutableIntStateOf(5) }
     var buffer by remember { mutableIntStateOf(2) }
-    var days by remember { mutableStateOf(setOf(1, 2, 3, 4, 5)) }
-    var startHour by remember { mutableIntStateOf(7) }
-    var endHour by remember { mutableIntStateOf(9) }
+    var windows by remember { mutableStateOf(listOf(AlertWindow(setOf(1, 2, 3, 4, 5), 7 * 60, 9 * 60))) }
 
     fun load() {
         error = null
@@ -736,29 +735,20 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
                         Text("$buffer min", style = MaterialTheme.typography.headlineMedium, color = scheme.primary)
                         Slider(buffer.toFloat(), { buffer = it.toInt() }, valueRange = 0f..15f, steps = 14)
                     }
-                    AppCard(Modifier.fillMaxWidth()) {
-                        Text("Quand être prévenu ?", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(10.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            DAY_LABELS.forEachIndexed { i, label ->
-                                DayToggle(label, (i + 1) in days) { days = if ((i + 1) in days) days - (i + 1) else days + (i + 1) }
-                            }
-                        }
-                        Spacer(Modifier.height(10.dp))
-                        Text("De ${startHour} h à ${endHour} h", style = MaterialTheme.typography.bodyLarge)
-                        Slider(startHour.toFloat(), { startHour = it.toInt().coerceAtMost(endHour) }, valueRange = 0f..23f, steps = 22)
-                        Slider(endHour.toFloat(), { endHour = it.toInt().coerceAtLeast(startHour) }, valueRange = 0f..23f, steps = 22)
-                    }
+                    Text("Quand être prévenu ?", style = MaterialTheme.typography.titleMedium)
+                    WindowsEditor(windows) { windows = it }
                     Button(
                         modifier = Modifier.fillMaxWidth().height(52.dp),
-                        enabled = name.isNotBlank() && days.isNotEmpty(),
+                        enabled = name.isNotBlank() && windows.isNotEmpty() && windows.all { it.days.isNotEmpty() },
                         onClick = {
                             onSave(
                                 Trip(
                                     id = UUID.randomUUID().toString(), name = name.trim(),
                                     stop = StopSelection(station!!, line!!, direction!!),
-                                    walkMinutes = walk, bufferMinutes = buffer, days = days,
-                                    startMinute = startHour * 60, endMinute = endHour * 60 + 59,
+                                    walkMinutes = walk, bufferMinutes = buffer,
+                                    days = windows.first().days,
+                                    startMinute = windows.first().startMinute, endMinute = windows.first().endMinute,
+                                    extraWindows = windows.drop(1),
                                 ),
                             )
                         },

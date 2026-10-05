@@ -120,11 +120,12 @@ fun FavoriteAlertsDialog(f: Favorite, onDismiss: () -> Unit, onSave: (Favorite) 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun NewFavoriteScreen(onCancel: () -> Unit, onSave: (Favorite) -> Unit) {
+fun NewFavoriteScreen(trips: List<Trip>, onCancel: () -> Unit, onSave: (Favorite) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var data by remember { mutableStateOf<List<Passage>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var loadKey by remember { mutableIntStateOf(0) }
+    var manual by remember { mutableStateOf(trips.isEmpty()) }
     var stop by remember { mutableStateOf<StopSelection?>(null) }
     var name by remember { mutableStateOf("") }
     var minute by remember { mutableIntStateOf(8 * 60) }
@@ -163,7 +164,7 @@ fun NewFavoriteScreen(onCancel: () -> Unit, onSave: (Favorite) -> Unit) {
                     if (error != null) Button(onClick = { loadKey++ }) { Text("Réessayer") } else CircularProgressIndicator()
                 }
             } else if (sel == null) {
-                StopPicker(all, "Favori", onPicked = {
+                fun choose(it: StopSelection) {
                     stop = it
                     name = "${it.line} · ${pretty(it.station)}"
                     // Pré-remplit l'horaire avec le prochain passage annoncé.
@@ -171,7 +172,34 @@ fun NewFavoriteScreen(onCancel: () -> Unit, onSave: (Favorite) -> Unit) {
                         val z = java.time.ZonedDateTime.ofInstant(p.time, java.time.ZoneId.of("Europe/Paris"))
                         minute = z.hour * 60 + z.minute
                     }
-                }, onBack = onCancel)
+                }
+                if (!manual) {
+                    BackHandler { onCancel() }
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text("Choisir parmi mes trajets", style = MaterialTheme.typography.titleMedium)
+                        trips.forEach { t ->
+                            AppCard(Modifier.fillMaxWidth(), onClick = { choose(t.stop) }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    LineBadge(t.stop.line, 40.dp)
+                                    Spacer(Modifier.width(12.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(t.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text("→ ${pretty(t.stop.direction)}", style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(stopLabel(t.stop.station, t.stop.line), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                            }
+                        }
+                        androidx.compose.material3.OutlinedButton(onClick = { manual = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Autre ligne ou autre arrêt")
+                        }
+                    }
+                } else {
+                    StopPicker(all, "Favori", onPicked = { choose(it) }, onBack = { if (trips.isNotEmpty()) manual = false else onCancel() })
+                }
             } else {
                 val upcoming = remember(all, sel) { all.filter { sel.matches(it) }.sortedBy { it.time }.take(6) }
                 Column(
@@ -204,10 +232,7 @@ fun NewFavoriteScreen(onCancel: () -> Unit, onSave: (Favorite) -> Unit) {
                                 }
                             }
                         }
-                        Text("Heure : ${minute / 60} h", style = MaterialTheme.typography.bodyMedium)
-                        Slider((minute / 60).toFloat(), { minute = it.toInt() * 60 + minute % 60 }, valueRange = 0f..23f, steps = 22)
-                        Text("Minute : ${minute % 60}", style = MaterialTheme.typography.bodyMedium)
-                        Slider((minute % 60).toFloat(), { minute = (minute / 60) * 60 + it.toInt() }, valueRange = 0f..59f, steps = 58)
+                        TimeStepper("À", minute) { minute = it }
                     }
                     AppCard(Modifier.fillMaxWidth()) {
                         Text("Jours", style = MaterialTheme.typography.titleMedium)

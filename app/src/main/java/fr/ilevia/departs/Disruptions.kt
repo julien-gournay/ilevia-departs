@@ -43,13 +43,22 @@ object Disruptions {
     }
 
     /** Convertit le HTML des messages Ilévia en texte lisible (paragraphes, listes, entités). */
+    private const val NL = "§§NL§§"
+
     internal fun cleanHtml(raw: String): String {
-        val prepared = raw
-            .replace(Regex("(?i)<\\s*br\\s*/?>"), "\n")
-            .replace(Regex("(?i)</\\s*(p|div|h[1-6]|tr)\\s*>"), "\n")
-            .replace(Regex("(?i)<\\s*li[^>]*>"), "\n• ")
-        val text = androidx.core.text.HtmlCompat.fromHtml(prepared, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+        // Le HTML arrive parfois échappé (&lt;b&gt;…) : on décode jusqu'à stabilité (3 passes max).
+        var text = raw
+        repeat(3) {
+            val prepared = text
+                .replace(Regex("(?i)<\\s*br\\s*/?>"), NL)
+                .replace(Regex("(?i)</\\s*(p|div|h[1-6]|tr)\\s*>"), NL)
+                .replace(Regex("(?i)<\\s*li[^>]*>"), NL + "• ")
+            val next = androidx.core.text.HtmlCompat.fromHtml(prepared, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+            if (next == text) return@repeat
+            text = next
+        }
         return text
+            .replace(NL, "\n")
             .replace('\u200B', ' ').replace('\uFFFC', ' ').replace('\u00A0', ' ')
             .replace(Regex("[ \\t]+"), " ")
             .replace(Regex(" ?\\n ?"), "\n")
