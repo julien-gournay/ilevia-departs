@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/grid_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_bg" android:orientation="vertical" android:padding="6dp">
+
+    <LinearLayout android:id="@+id/grow_0" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginVertical="2dp" android:layout_weight="1" android:orientation="horizontal" android:visibility="gone">
+        <LinearLayout android:id="@+id/gpill_0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_marginHorizontal="2dp" android:layout_weight="1" android:background="@drawable/panel_bg" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:visibility="gone">
+            <TextView android:id="@+id/gbadge_0" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/gtitle_0" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="12sp" android:textStyle="bold" />
+                <TextView android:id="@+id/gsub_0" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/gpill_1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_marginHorizontal="2dp" android:layout_weight="1" android:background="@drawable/panel_bg" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:visibility="gone">
+            <TextView android:id="@+id/gbadge_1" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/gtitle_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="12sp" android:textStyle="bold" />
+                <TextView android:id="@+id/gsub_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/grow_1" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginVertical="2dp" android:layout_weight="1" android:orientation="horizontal" android:visibility="gone">
+        <LinearLayout android:id="@+id/gpill_2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_marginHorizontal="2dp" android:layout_weight="1" android:background="@drawable/panel_bg" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:visibility="gone">
+            <TextView android:id="@+id/gbadge_2" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/gtitle_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="12sp" android:textStyle="bold" />
+                <TextView android:id="@+id/gsub_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/gpill_3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_marginHorizontal="2dp" android:layout_weight="1" android:background="@drawable/panel_bg" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:visibility="gone">
+            <TextView android:id="@+id/gbadge_3" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/gtitle_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="12sp" android:textStyle="bold" />
+                <TextView android:id="@+id/gsub_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/grow_2" android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginVertical="2dp" android:layout_weight="1" android:orientation="horizontal" android:visibility="gone">
+        <LinearLayout android:id="@+id/gpill_4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_marginHorizontal="2dp" android:layout_weight="1" android:background="@drawable/panel_bg" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:visibility="gone">
+            <TextView android:id="@+id/gbadge_4" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/gtitle_4" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="12sp" android:textStyle="bold" />
+                <TextView android:id="@+id/gsub_4" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:id="@+id/gpill_5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_marginHorizontal="2dp" android:layout_weight="1" android:background="@drawable/panel_bg" android:gravity="center_vertical" android:orientation="horizontal" android:paddingHorizontal="6dp" android:visibility="gone">
+            <TextView android:id="@+id/gbadge_5" android:layout_width="28dp" android:layout_height="28dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/gtitle_5" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="12sp" android:textStyle="bold" />
+                <TextView android:id="@+id/gsub_5" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView android:id="@+id/grid_empty" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="Aucun trajet : touchez longuement le widget pour le configurer" android:textColor="@color/widget_text_secondary" android:textSize="12sp" android:visibility="gone" />
+</LinearLayout>

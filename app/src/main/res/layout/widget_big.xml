@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/big_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_bg" android:orientation="vertical" android:padding="10dp">
+
+    <LinearLayout android:id="@+id/big_content" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+            <TextView android:id="@+id/big_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/badge_0" android:gravity="center" android:minWidth="24dp" android:paddingHorizontal="6dp" android:paddingVertical="1dp" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
+            <TextView android:id="@+id/big_station" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:layout_weight="1" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center_vertical|start" android:orientation="horizontal">
+            <TextView android:id="@+id/big_num" android:layout_width="wrap_content" android:layout_height="wrap_content" android:autoSizeMaxTextSize="46sp" android:autoSizeMinTextSize="20sp" android:autoSizeStepGranularity="1sp" android:autoSizeTextType="uniform" android:maxLines="1" android:textColor="@color/widget_text" android:textStyle="bold" />
+            <TextView android:id="@+id/big_unit" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginTop="10dp" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="14sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:id="@+id/big_panel" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/panel_bg" android:orientation="vertical" android:padding="8dp">
+            <TextView android:id="@+id/big_dir" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="12sp" android:textStyle="bold" />
+            <TextView android:id="@+id/big_dep" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="11sp" />
+            <TextView android:id="@+id/big_leave" android:layout_width="match_parent" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_leave" android:textSize="11sp" android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView android:id="@+id/big_empty" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:text="Aucun trajet : touchez longuement le widget pour le configurer" android:textColor="@color/widget_text_secondary" android:textSize="12sp" android:visibility="gone" />
+</LinearLayout>

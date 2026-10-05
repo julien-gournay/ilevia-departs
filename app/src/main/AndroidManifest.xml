@@ -23,7 +23,8 @@
 
         <receiver
             android:name=".DepartureWidget"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_band_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="fr.ilevia.departs.REFRESH" />
@@ -32,6 +33,54 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/departure_widget_info" />
         </receiver>
+
+
+        <receiver
+            android:name=".BigWidget"
+            android:exported="true"
+            android:label="@string/widget_big_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="fr.ilevia.departs.REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/big_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".BoardWidget"
+            android:exported="true"
+            android:label="@string/widget_board_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="fr.ilevia.departs.REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/board_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".GridWidget"
+            android:exported="true"
+            android:label="@string/widget_grid_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="fr.ilevia.departs.REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grid_widget_info" />
+        </receiver>
+
+        <activity
+            android:name=".WidgetConfigActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
         <receiver
             android:name=".AlertReceiver"

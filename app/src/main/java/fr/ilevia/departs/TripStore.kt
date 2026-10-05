@@ -53,6 +53,26 @@ class TripStore(context: Context) {
         return widgetTripIds().mapNotNull { byId[it] }
     }
 
+    /** Trajets d'un widget précis (choisis à sa pose) ; à défaut, la liste « Sur le widget » de l'app. */
+    fun tripIdsForWidget(id: Int): List<String> {
+        val raw = prefs.getString("w_$id", null) ?: return widgetTripIds()
+        val valid = all().map { it.id }.toSet()
+        return raw.split(",").filter { it.isNotBlank() && it in valid }
+    }
+
+    fun setTripsForWidget(id: Int, ids: List<String>) {
+        prefs.edit().putString("w_$id", ids.joinToString(",")).apply()
+    }
+
+    fun clearWidget(id: Int) {
+        prefs.edit().remove("w_$id").apply()
+    }
+
+    fun tripsForWidget(id: Int): List<Trip> {
+        val byId = all().associateBy { it.id }
+        return tripIdsForWidget(id).mapNotNull { byId[it] }
+    }
+
     var showDeparture: Boolean
         get() = prefs.getBoolean("show_departure", true)
         set(v) { prefs.edit().putBoolean("show_departure", v).apply() }

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/board_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_bg" android:orientation="vertical" android:padding="6dp">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="18dp" android:gravity="center_vertical" android:orientation="horizontal">
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:singleLine="true" android:text="Prochains départs" android:textColor="@color/widget_text" android:textSize="13sp" android:textStyle="bold" />
+        <TextView android:id="@+id/board_updated" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="11sp" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/brow_0" android:layout_width="match_parent" android:layout_height="38dp" android:gravity="center_vertical" android:orientation="horizontal" android:visibility="gone">
+        <TextView android:id="@+id/bbadge_0" android:layout_width="30dp" android:layout_height="30dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/bdir_0" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/bsub_0" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:gravity="end" android:orientation="vertical">
+            <TextView android:id="@+id/bmins_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="15sp" android:textStyle="bold" />
+            <TextView android:id="@+id/bleave_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_leave" android:textSize="10sp" android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/brow_1" android:layout_width="match_parent" android:layout_height="38dp" android:gravity="center_vertical" android:orientation="horizontal" android:visibility="gone">
+        <TextView android:id="@+id/bbadge_1" android:layout_width="30dp" android:layout_height="30dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/bdir_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/bsub_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:gravity="end" android:orientation="vertical">
+            <TextView android:id="@+id/bmins_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="15sp" android:textStyle="bold" />
+            <TextView android:id="@+id/bleave_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_leave" android:textSize="10sp" android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/brow_2" android:layout_width="match_parent" android:layout_height="38dp" android:gravity="center_vertical" android:orientation="horizontal" android:visibility="gone">
+        <TextView android:id="@+id/bbadge_2" android:layout_width="30dp" android:layout_height="30dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/bdir_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/bsub_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:gravity="end" android:orientation="vertical">
+            <TextView android:id="@+id/bmins_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="15sp" android:textStyle="bold" />
+            <TextView android:id="@+id/bleave_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_leave" android:textSize="10sp" android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/brow_3" android:layout_width="match_parent" android:layout_height="38dp" android:gravity="center_vertical" android:orientation="horizontal" android:visibility="gone">
+        <TextView android:id="@+id/bbadge_3" android:layout_width="30dp" android:layout_height="30dp" android:background="@drawable/badge_round_0" android:gravity="center" android:singleLine="true" android:textColor="#FFFFFF" android:textSize="13sp" android:textStyle="bold" />
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:layout_weight="1" android:orientation="vertical">
+            <TextView android:id="@+id/bdir_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="13sp" android:textStyle="bold" />
+            <TextView android:id="@+id/bsub_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:singleLine="true" android:textColor="@color/widget_text_secondary" android:textSize="10sp" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="6dp" android:gravity="end" android:orientation="vertical">
+            <TextView android:id="@+id/bmins_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_text" android:textSize="15sp" android:textStyle="bold" />
+            <TextView android:id="@+id/bleave_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:singleLine="true" android:textColor="@color/widget_leave" android:textSize="10sp" android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView android:id="@+id/board_empty" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:gravity="center" android:text="Aucun trajet : touchez longuement le widget pour le configurer" android:textColor="@color/widget_text_secondary" android:textSize="12sp" android:visibility="gone" />
+</LinearLayout>

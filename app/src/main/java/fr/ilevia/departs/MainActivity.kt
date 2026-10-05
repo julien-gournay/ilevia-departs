@@ -124,7 +124,7 @@ fun App() {
                                 showLeave = it; store.showLeave = it; DepartureWidget.refreshAll(context)
                             }
                             Text(
-                                "Widget 1×3 : 3 trajets, 1×5 : 5 trajets (dans l'ordre de la liste, ceux marqués « Sur le widget »).",
+                                "Ajoutez un widget Ilévia (bandeau, grand chiffre, liste, grille) : à la pose, choisissez ses trajets. Pour les changer : appui long sur le widget → Reconfigurer. « Sur le widget » = trajets par défaut des widgets non configurés.",
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
