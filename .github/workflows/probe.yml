@@ -7,19 +7,21 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Feed
+      - name: Collections
         run: |
           python3 - <<'PY'
-          import json,urllib.request,collections,datetime
+          import json,urllib.request
           def note(m): print("::notice::"+m.replace("\n"," | ")[:950])
-          B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/dsp_ilevia:prochains_passages/items?f=application/json&limit=20000"
-          d=json.load(urllib.request.urlopen(urllib.request.Request(B,headers={"User-Agent":"p"}),timeout=90))
-          r=[f["properties"] for f in d["features"]]
-          note(f"now={datetime.datetime.utcnow()+datetime.timedelta(hours=2)} rows={len(r)} lignes={len(set(x['code_ligne'] for x in r))}")
-          note("lignes="+",".join(sorted(set(x['code_ligne'] for x in r)))[:600])
-          note("max_modif="+max(x["date_modification"] for x in r)+" min_heure="+min(x["heure_estimee_depart"] for x in r)+" max_heure="+max(x["heure_estimee_depart"] for x in r))
-          n=[x for x in r if "neuville" in x["nom_station"].lower()]
-          note("neuville="+json.dumps(n[:4],ensure_ascii=False))
-          l82=[x for x in r if x["code_ligne"]=="82"]
-          note(f"ligne82 rows={len(l82)}")
+          B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/"
+          g=lambda u: json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"p"}),timeout=90))
+          for c in ["physical_stop","localisation_point_arret","mobilier_point_arret"]:
+              d=g(B+"dsp_ilevia:"+c+"/items?f=application/json&limit=3")
+              p=[f["properties"] for f in d["features"]]
+              note(f"{c} matched={d.get('numberMatched')} ex="+json.dumps(p[:2],ensure_ascii=False))
+          ap=g(B+"dsp_ilevia:arret_point/items?f=application/json&limit=6000")["features"]
+          pn=[a["properties"] for a in ap if "neuville" in (a["properties"].get("stop_name","")+a["properties"].get("stop_desc","")).lower()]
+          note("arret_point neuville="+json.dumps(pn[:5],ensure_ascii=False))
+          ps=g(B+"dsp_ilevia:physical_stop/items?f=application/json&limit=9000")["features"]
+          pp=[a["properties"] for a in ps if "neuville" in json.dumps(a["properties"],ensure_ascii=False).lower()]
+          note("physical_stop neuville="+json.dumps(pp[:4],ensure_ascii=False))
           PY
