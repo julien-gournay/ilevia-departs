@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Ilévia Départs</string>
+    <string name="widget_desc">Prochain départ de votre trajet Ilévia</string>
+    <string name="channel_name">Alertes de départ</string>
+</resources>
