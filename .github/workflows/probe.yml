@@ -1,0 +1,32 @@
+name: Probe API
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/probe.yml"]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Interroger l'API Ilévia
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,collections
+          base="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/dsp_ilevia:prochains_passages/items?f=application/json&limit=20000"
+          def note(m): print("::notice::"+m.replace("\n"," | ")[:900])
+          url=base; rows=[]; pages=0
+          while url and pages<60:
+              d=json.load(urllib.request.urlopen(urllib.request.Request(url,headers={"User-Agent":"probe"}),timeout=60))
+              feats=d.get("features",[]); rows+=[f.get("properties",{}) for f in feats]; pages+=1
+              url=next((l["href"] for l in d.get("links",[]) if l.get("rel")=="next"),None)
+          note(f"pages={pages} rows={len(rows)} numberMatched={d.get('numberMatched')} numberReturned={d.get('numberReturned')}")
+          note("keys="+",".join(rows[0].keys()))
+          note("sample="+json.dumps(rows[0],ensure_ascii=False))
+          lines=collections.Counter(r.get("code_ligne") for r in rows)
+          note("lignes="+", ".join(f"{k}:{v}" for k,v in sorted(lines.items(),key=lambda x:str(x[0]))))
+          notime=[r for r in rows if not r.get("heure_estimee_depart")]
+          note(f"sans heure_estimee_depart={len(notime)} ex="+json.dumps(notime[:2],ensure_ascii=False))
+          keyc=collections.Counter((r.get("nom_station"),r.get("code_ligne"),r.get("sens_ligne")) for r in rows)
+          note(f"cles uniques={len(keyc)} max_par_cle={max(keyc.values())}")
+          for k in ("type_ligne","ligne_publique","code_ligne_public","type_vehicule"):
+              if k in rows[0]: note(k+"="+str(collections.Counter(r.get(k) for r in rows).most_common(12)))
+          PY
