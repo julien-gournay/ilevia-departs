@@ -17,23 +17,49 @@ class TripStore(context: Context) {
     }
 
     fun save(trip: Trip) {
-        val list = all().filterNot { it.id == trip.id } + trip
-        write(list)
-        if (widgetTripId() == null) setWidgetTrip(trip.id)
+        val existing = all()
+        val isNew = existing.none { it.id == trip.id }
+        // Remplace en place pour ne pas changer l'ordre des trajets (et donc des tuiles du widget).
+        write(if (isNew) existing + trip else existing.map { if (it.id == trip.id) trip else it })
+        if (isNew) setWidgetTripIds(widgetTripIds() + trip.id)
     }
 
     fun delete(id: String) {
+        val ids = widgetTripIds() - id
         write(all().filterNot { it.id == id })
-        if (widgetTripId() == id) setWidgetTrip(all().firstOrNull()?.id)
+        setWidgetTripIds(ids)
     }
 
-    fun widgetTripId(): String? = prefs.getString("widget_trip", null)
-
-    fun setWidgetTrip(id: String?) {
-        prefs.edit().apply { if (id == null) remove("widget_trip") else putString("widget_trip", id) }.apply()
+    /** Trajets affichés sur le widget, dans l'ordre d'affichage (1ʳᵉ tuile = 1er de la liste). */
+    fun widgetTripIds(): List<String> {
+        val valid = all().map { it.id }.toSet()
+        val raw = prefs.getString("widget_trips", null)
+        val ids = if (raw != null) raw.split(",").filter { it.isNotBlank() }
+        else listOfNotNull(prefs.getString("widget_trip", null)) // ancienne version : un seul trajet
+        return ids.filter { it in valid }
     }
 
-    fun widgetTrip(): Trip? = all().let { l -> l.firstOrNull { it.id == widgetTripId() } ?: l.firstOrNull() }
+    fun setWidgetTripIds(ids: List<String>) {
+        prefs.edit().putString("widget_trips", ids.joinToString(",")).apply()
+    }
+
+    fun toggleOnWidget(id: String) {
+        val cur = widgetTripIds()
+        setWidgetTripIds(if (id in cur) cur - id else cur + id)
+    }
+
+    fun widgetTrips(): List<Trip> {
+        val byId = all().associateBy { it.id }
+        return widgetTripIds().mapNotNull { byId[it] }
+    }
+
+    var showDeparture: Boolean
+        get() = prefs.getBoolean("show_departure", true)
+        set(v) { prefs.edit().putBoolean("show_departure", v).apply() }
+
+    var showLeave: Boolean
+        get() = prefs.getBoolean("show_leave", true)
+        set(v) { prefs.edit().putBoolean("show_leave", v).apply() }
 
     private fun write(list: List<Trip>) {
         val arr = JSONArray()

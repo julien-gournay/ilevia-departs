@@ -71,7 +71,9 @@ fun App() {
     val store = remember { TripStore(context) }
     var trips by remember { mutableStateOf(store.all()) }
     var creating by remember { mutableStateOf(false) }
-    var widgetId by remember { mutableStateOf(store.widgetTripId()) }
+    var widgetIds by remember { mutableStateOf(store.widgetTripIds()) }
+    var showDeparture by remember { mutableStateOf(store.showDeparture) }
+    var showLeave by remember { mutableStateOf(store.showLeave) }
     var diag by remember { mutableStateOf(false) }
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -91,7 +93,7 @@ fun App() {
             onCancel = { creating = false },
             onSave = { trip ->
                 store.save(trip)
-                trips = store.all(); widgetId = store.widgetTripId()
+                trips = store.all(); widgetIds = store.widgetTripIds()
                 creating = false
                 AlertScheduler.ensurePeriodicCheck(context)
                 DepartureWidget.refreshAll(context)
@@ -111,13 +113,30 @@ fun App() {
             }
         } else {
             LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("Affichage du widget", style = MaterialTheme.typography.titleMedium)
+                            SettingRow("Heure de départ du bus", showDeparture) {
+                                showDeparture = it; store.showDeparture = it; DepartureWidget.refreshAll(context)
+                            }
+                            SettingRow("Heure où il faut partir", showLeave) {
+                                showLeave = it; store.showLeave = it; DepartureWidget.refreshAll(context)
+                            }
+                            Text(
+                                "Widget 1×3 : 3 trajets, 1×5 : 5 trajets (dans l'ordre de la liste, ceux marqués « Sur le widget »).",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
                 items(trips, key = { it.id }) { trip ->
                     TripCard(
                         trip = trip,
-                        isWidget = widgetId == trip.id,
-                        onWidget = { store.setWidgetTrip(trip.id); widgetId = trip.id; DepartureWidget.refreshAll(context) },
+                        isWidget = trip.id in widgetIds,
+                        onWidget = { store.toggleOnWidget(trip.id); widgetIds = store.widgetTripIds(); DepartureWidget.refreshAll(context) },
                         onToggle = { store.save(trip.copy(enabled = it)); trips = store.all() },
-                        onDelete = { store.delete(trip.id); trips = store.all(); widgetId = store.widgetTripId(); DepartureWidget.refreshAll(context) },
+                        onDelete = { store.delete(trip.id); trips = store.all(); widgetIds = store.widgetTripIds(); DepartureWidget.refreshAll(context) },
                     )
                 }
             }
@@ -168,8 +187,7 @@ fun TripCard(trip: Trip, isWidget: Boolean, onWidget: () -> Unit, onToggle: (Boo
                 Switch(checked = trip.enabled, onCheckedChange = onToggle)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (isWidget) Text("✓ Affiché sur le widget", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f).align(Alignment.CenterVertically))
-                else OutlinedButton(onClick = onWidget) { Text("Mettre sur le widget") }
+                OutlinedButton(onClick = onWidget) { Text(if (isWidget) "✓ Sur le widget" else "Mettre sur le widget") }
                 TextButton(onClick = onDelete) { Text("Supprimer") }
             }
         }
@@ -305,5 +323,13 @@ fun DiagnosticScreen(defaultQuery: String, onClose: () -> Unit) {
             }) { Text("Lancer") }
             Text(out, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
         }
+    }
+}
+
+@Composable
+fun SettingRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
