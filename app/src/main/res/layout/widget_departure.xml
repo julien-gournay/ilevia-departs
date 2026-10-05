@@ -41,7 +41,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/badge_0"
                 android:gravity="center"
-                android:minWidth="22dp"
+                android:minWidth="20dp"
                 android:paddingHorizontal="4dp"
                 android:paddingVertical="1dp"
                 android:singleLine="true"
@@ -53,15 +53,25 @@
                 android:id="@+id/mins_0"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
+                android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="17sp"
-                android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="26sp"
+                android:autoSizeMinTextSize="11sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/unit_0"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="1dp"
+                android:singleLine="true"
+                android:text="min"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="9sp" />
         </LinearLayout>
 
         <TextView
@@ -113,7 +123,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/badge_0"
                 android:gravity="center"
-                android:minWidth="22dp"
+                android:minWidth="20dp"
                 android:paddingHorizontal="4dp"
                 android:paddingVertical="1dp"
                 android:singleLine="true"
@@ -125,15 +135,25 @@
                 android:id="@+id/mins_1"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
+                android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="17sp"
-                android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="26sp"
+                android:autoSizeMinTextSize="11sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/unit_1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="1dp"
+                android:singleLine="true"
+                android:text="min"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="9sp" />
         </LinearLayout>
 
         <TextView
@@ -185,7 +205,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/badge_0"
                 android:gravity="center"
-                android:minWidth="22dp"
+                android:minWidth="20dp"
                 android:paddingHorizontal="4dp"
                 android:paddingVertical="1dp"
                 android:singleLine="true"
@@ -197,15 +217,25 @@
                 android:id="@+id/mins_2"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
+                android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="17sp"
-                android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="26sp"
+                android:autoSizeMinTextSize="11sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/unit_2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="1dp"
+                android:singleLine="true"
+                android:text="min"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="9sp" />
         </LinearLayout>
 
         <TextView
@@ -257,7 +287,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/badge_0"
                 android:gravity="center"
-                android:minWidth="22dp"
+                android:minWidth="20dp"
                 android:paddingHorizontal="4dp"
                 android:paddingVertical="1dp"
                 android:singleLine="true"
@@ -269,15 +299,25 @@
                 android:id="@+id/mins_3"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
+                android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="17sp"
-                android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="26sp"
+                android:autoSizeMinTextSize="11sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/unit_3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="1dp"
+                android:singleLine="true"
+                android:text="min"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="9sp" />
         </LinearLayout>
 
         <TextView
@@ -329,7 +369,7 @@
                 android:layout_height="wrap_content"
                 android:background="@drawable/badge_0"
                 android:gravity="center"
-                android:minWidth="22dp"
+                android:minWidth="20dp"
                 android:paddingHorizontal="4dp"
                 android:paddingVertical="1dp"
                 android:singleLine="true"
@@ -341,15 +381,25 @@
                 android:id="@+id/mins_4"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
+                android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="17sp"
-                android:autoSizeMinTextSize="9sp"
+                android:autoSizeMaxTextSize="26sp"
+                android:autoSizeMinTextSize="11sp"
                 android:autoSizeStepGranularity="1sp"
                 android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/unit_4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="1dp"
+                android:singleLine="true"
+                android:text="min"
+                android:textColor="@color/widget_text_secondary"
+                android:textSize="9sp" />
         </LinearLayout>
 
         <TextView

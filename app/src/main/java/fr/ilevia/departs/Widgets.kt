@@ -26,6 +26,7 @@ class WidgetCtx(
     val heightDp: Int,
     val showDep: Boolean,
     val showLeave: Boolean,
+    val showStation: Boolean,
     val now: Instant,
     val updatedAt: String,
 )
@@ -63,7 +64,7 @@ object WidgetUpdater {
                     val data = store.tripsForWidget(id).map { t ->
                         TileData(t, if (fetched) IleviaApi.passagesFor(t.stop).filter { it.time.isAfter(now.minusSeconds(30)) } else null)
                     }
-                    manager.updateAppWidget(id, renderer.render(WidgetCtx(app, data, w, h, store.showDeparture, store.showLeave, now, updated)))
+                    manager.updateAppWidget(id, renderer.render(WidgetCtx(app, data, w, h, store.showDeparture, store.showLeave, store.showStation, now, updated)))
                 }
             }
         }.start()
@@ -83,7 +84,7 @@ private val BADGE_ROUND = intArrayOf(
 
 private fun colorIndex(line: String): Int = (line.toIntOrNull() ?: abs(line.hashCode())) % BADGE_RECT.size
 
-private fun pretty(s: String): String =
+internal fun pretty(s: String): String =
     s.lowercase().split(' ').joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } }
 
 private fun refreshIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(
@@ -107,7 +108,7 @@ private fun RemoteViews.badge(id: Int, line: String, round: Boolean) {
 
 private fun minutesUntil(c: WidgetCtx, p: Passage): Long = Duration.between(c.now, p.time).toMinutes().coerceAtLeast(0)
 
-private fun minsText(m: Long) = if (m <= 0) "Imminent" else "$m min"
+private fun minsText(m: Long) = if (m <= 0) "Proche" else "$m min"
 
 private fun leaveText(c: WidgetCtx, trip: Trip, p: Passage): String {
     val leave = trip.leaveTime(p.time)
@@ -122,6 +123,7 @@ object BandRenderer : Renderer {
     private val TILE = intArrayOf(R.id.tile_0, R.id.tile_1, R.id.tile_2, R.id.tile_3, R.id.tile_4)
     private val BADGE = intArrayOf(R.id.badge_0, R.id.badge_1, R.id.badge_2, R.id.badge_3, R.id.badge_4)
     private val MINS = intArrayOf(R.id.mins_0, R.id.mins_1, R.id.mins_2, R.id.mins_3, R.id.mins_4)
+    private val UNIT = intArrayOf(R.id.unit_0, R.id.unit_1, R.id.unit_2, R.id.unit_3, R.id.unit_4)
     private val STATION = intArrayOf(R.id.station_0, R.id.station_1, R.id.station_2, R.id.station_3, R.id.station_4)
     private val DEP = intArrayOf(R.id.dep_0, R.id.dep_1, R.id.dep_2, R.id.dep_3, R.id.dep_4)
     private val LEAVE = intArrayOf(R.id.leave_0, R.id.leave_1, R.id.leave_2, R.id.leave_3, R.id.leave_4)
@@ -136,17 +138,20 @@ object BandRenderer : Renderer {
             if (d == null || i >= count) { v.show(TILE[i], false); continue }
             v.show(TILE[i], true)
             v.badge(BADGE[i], d.trip.stop.line, round = false)
-            v.setTextViewText(STATION[i], pretty(d.trip.stop.station))
+            v.text(STATION[i], if (c.showStation) pretty(d.trip.stop.station) else null)
             val next = d.next
             when {
-                d.passages == null -> { v.setTextViewText(MINS[i], "Hors ligne"); v.text(DEP[i], null); v.text(LEAVE[i], null) }
+                d.passages == null -> { v.setTextViewText(MINS[i], "Hors ligne"); v.show(UNIT[i], false); v.text(DEP[i], null); v.text(LEAVE[i], null) }
                 next == null -> {
-                    v.setTextViewText(MINS[i], "—")
+                    v.setTextViewText(MINS[i], "—"); v.show(UNIT[i], false)
                     v.text(DEP[i], if (c.showDep) "Aucun passage" else null)
                     v.text(LEAVE[i], null)
                 }
                 else -> {
-                    v.setTextViewText(MINS[i], minsText(minutesUntil(c, next)))
+                    val m = minutesUntil(c, next)
+                    // Nombre en grand + « min » en petit : lisible même avec 4 ou 5 tuiles.
+                    v.setTextViewText(MINS[i], if (m <= 0) "Proche" else m.toString())
+                    v.show(UNIT[i], m > 0)
                     v.text(DEP[i], if (c.showDep) depText(next) else null)
                     v.text(LEAVE[i], if (c.showLeave) leaveText(c, d.trip, next) else null)
                 }
@@ -168,7 +173,7 @@ object BigRenderer : Renderer {
         if (d == null) return v
 
         v.badge(R.id.big_badge, d.trip.stop.line, round = false)
-        v.setTextViewText(R.id.big_station, pretty(d.trip.stop.station))
+        v.text(R.id.big_station, if (c.showStation) pretty(d.trip.stop.station) else null)
         v.setTextViewText(R.id.big_dir, "→ " + pretty(d.trip.stop.direction))
         // Sur un widget peu haut, on garde seulement le grand chiffre.
         val roomy = c.heightDp >= 100
@@ -218,12 +223,13 @@ object BoardRenderer : Renderer {
             v.badge(BADGE[i], d.trip.stop.line, round = true)
             v.setTextViewText(DIR[i], pretty(d.trip.stop.direction))
             val next = d.next
-            val station = pretty(d.trip.stop.station)
+            val station = if (c.showStation) pretty(d.trip.stop.station) else null
             when {
-                d.passages == null -> { v.setTextViewText(SUB[i], station); v.setTextViewText(MINS[i], "Hors ligne"); v.text(LEAVE[i], null) }
-                next == null -> { v.setTextViewText(SUB[i], station); v.setTextViewText(MINS[i], "—"); v.text(LEAVE[i], null) }
+                d.passages == null -> { v.text(SUB[i], station); v.setTextViewText(MINS[i], "Hors ligne"); v.text(LEAVE[i], null) }
+                next == null -> { v.text(SUB[i], station); v.setTextViewText(MINS[i], "—"); v.text(LEAVE[i], null) }
                 else -> {
-                    v.setTextViewText(SUB[i], if (c.showDep) "$station · ${depText(next)}" else station)
+                    val sub = listOfNotNull(station, if (c.showDep) depText(next) else null).joinToString(" · ")
+                    v.text(SUB[i], sub.ifEmpty { null })
                     v.setTextViewText(MINS[i], minsText(minutesUntil(c, next)))
                     v.text(LEAVE[i], if (c.showLeave) leaveText(c, d.trip, next) else null)
                 }
@@ -239,14 +245,17 @@ object GridRenderer : Renderer {
     private val ROW = intArrayOf(R.id.grow_0, R.id.grow_1, R.id.grow_2)
     private val PILL = intArrayOf(R.id.gpill_0, R.id.gpill_1, R.id.gpill_2, R.id.gpill_3, R.id.gpill_4, R.id.gpill_5)
     private val BADGE = intArrayOf(R.id.gbadge_0, R.id.gbadge_1, R.id.gbadge_2, R.id.gbadge_3, R.id.gbadge_4, R.id.gbadge_5)
+    private val MINS = intArrayOf(R.id.gmins_0, R.id.gmins_1, R.id.gmins_2, R.id.gmins_3, R.id.gmins_4, R.id.gmins_5)
+    private val DEP = intArrayOf(R.id.gdep_0, R.id.gdep_1, R.id.gdep_2, R.id.gdep_3, R.id.gdep_4, R.id.gdep_5)
     private val TITLE = intArrayOf(R.id.gtitle_0, R.id.gtitle_1, R.id.gtitle_2, R.id.gtitle_3, R.id.gtitle_4, R.id.gtitle_5)
-    private val SUB = intArrayOf(R.id.gsub_0, R.id.gsub_1, R.id.gsub_2, R.id.gsub_3, R.id.gsub_4, R.id.gsub_5)
+    private val STATION = intArrayOf(R.id.gstation_0, R.id.gstation_1, R.id.gstation_2, R.id.gstation_3, R.id.gstation_4, R.id.gstation_5)
 
     override fun render(c: WidgetCtx): RemoteViews {
         val v = RemoteViews(c.context.packageName, R.layout.widget_grid)
         v.setOnClickPendingIntent(R.id.grid_root, refreshIntent(c.context))
         v.show(R.id.grid_empty, c.data.isEmpty())
-        val rows = ((c.heightDp - 12) / 44).coerceIn(1, 3)
+        val pillHeight = if (c.showStation) 56 else 44
+        val rows = ((c.heightDp - 12) / (pillHeight + 4)).coerceIn(1, 3)
         val cols = if (c.widthDp >= 200) 2 else 1
         for (r in 0 until 3) {
             var rowVisible = false
@@ -259,15 +268,16 @@ object GridRenderer : Renderer {
                 v.show(PILL[slot], true)
                 v.badge(BADGE[slot], d.trip.stop.line, round = true)
                 v.setTextViewText(TITLE[slot], pretty(d.trip.stop.direction))
+                v.text(STATION[slot], if (c.showStation) pretty(d.trip.stop.station) else null)
                 val next = d.next
-                v.setTextViewText(
-                    SUB[slot],
-                    when {
-                        d.passages == null -> "Hors ligne"
-                        next == null -> "Aucun passage"
-                        else -> minsText(minutesUntil(c, next)) + if (c.showDep) " · ${formatTime(next.time)}" else ""
-                    },
-                )
+                when {
+                    d.passages == null -> { v.setTextViewText(MINS[slot], "Hors ligne"); v.text(DEP[slot], null) }
+                    next == null -> { v.setTextViewText(MINS[slot], "—"); v.text(DEP[slot], null) }
+                    else -> {
+                        v.setTextViewText(MINS[slot], minsText(minutesUntil(c, next)))
+                        v.text(DEP[slot], if (c.showDep) formatTime(next.time) else null)
+                    }
+                }
             }
             v.show(ROW[r], rowVisible)
         }

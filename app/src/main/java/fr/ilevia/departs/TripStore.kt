@@ -77,6 +77,10 @@ class TripStore(context: Context) {
         get() = prefs.getBoolean("show_departure", true)
         set(v) { prefs.edit().putBoolean("show_departure", v).apply() }
 
+    var showStation: Boolean
+        get() = prefs.getBoolean("show_station", true)
+        set(v) { prefs.edit().putBoolean("show_station", v).apply() }
+
     var showLeave: Boolean
         get() = prefs.getBoolean("show_leave", true)
         set(v) { prefs.edit().putBoolean("show_leave", v).apply() }

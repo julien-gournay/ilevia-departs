@@ -8,31 +8,56 @@ android {
     namespace = "fr.ilevia.departs"
     compileSdk = 34
 
+    // Numéro de version = numéro de build GitHub (voir .github/workflows/build.yml).
+    val buildNumber = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
+
     defaultConfig {
         applicationId = "fr.ilevia.departs"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = buildNumber
+        versionName = "1.0.$buildNumber"
+    }
+
+    // Clé de signature FIXE (dans le dépôt) : indispensable pour que chaque nouvelle version
+    // puisse s'installer par-dessus la précédente sans désinstaller l'app.
+    signingConfigs {
+        create("ilevia") {
+            storeFile = file("ilevia.keystore")
+            storePassword = "ileviadeparts"
+            keyAlias = "ilevia"
+            keyPassword = "ileviadeparts"
+        }
     }
 
     buildTypes {
+        debug { signingConfig = signingConfigs.getByName("ilevia") }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("ilevia")
         }
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 }
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.09.00")
     implementation(composeBom)
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.9.2")

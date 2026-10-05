@@ -1,31 +1,67 @@
 package fr.ilevia.departs
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -41,11 +77,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -57,98 +97,186 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Notifier.ensureChannel(this)
         AlertScheduler.ensurePeriodicCheck(this)
-        setContent { MaterialTheme { App() } }
+        setContent { IleviaTheme { AppRoot() } }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ───────────────────────── Racine : onglets + écrans plein écran ─────────────────────────
+
 @Composable
-fun App() {
+fun AppRoot() {
     val context = LocalContext.current
     val store = remember { TripStore(context) }
+    val updater = remember { UpdateController(context) }
     var trips by remember { mutableStateOf(store.all()) }
-    var creating by remember { mutableStateOf(false) }
     var widgetIds by remember { mutableStateOf(store.widgetTripIds()) }
-    var showDeparture by remember { mutableStateOf(store.showDeparture) }
-    var showLeave by remember { mutableStateOf(store.showLeave) }
-    var diag by remember { mutableStateOf(false) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var overlay by rememberSaveable { mutableStateOf("") }
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= 33) permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        updater.check()
     }
 
-    if (diag) {
-        BackHandler { diag = false }
-        DiagnosticScreen(defaultQuery = trips.firstOrNull()?.stop?.station ?: "", onClose = { diag = false })
-        return
+    fun reload() {
+        trips = store.all()
+        widgetIds = store.widgetTripIds()
+        WidgetUpdater.refreshAll(context)
     }
 
-    if (creating) {
-        BackHandler { creating = false }
+    if (overlay == "new") {
+        BackHandler { overlay = "" }
         NewTripScreen(
-            onCancel = { creating = false },
+            onCancel = { overlay = "" },
             onSave = { trip ->
                 store.save(trip)
-                trips = store.all(); widgetIds = store.widgetTripIds()
-                creating = false
+                reload()
                 AlertScheduler.ensurePeriodicCheck(context)
-                DepartureWidget.refreshAll(context)
+                overlay = ""
             },
         )
-        return
-    }
-
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Mes trajets Ilévia") }, actions = { TextButton(onClick = { diag = true }) { Text("Diagnostic") } }) },
-        floatingActionButton = { FloatingActionButton(onClick = { creating = true }) { Text("+") } },
-    ) { pad ->
-        if (trips.isEmpty()) {
-            Column(Modifier.padding(pad).padding(24.dp)) {
-                Text("Aucun trajet enregistré.", style = MaterialTheme.typography.titleMedium)
-                Text("Appuyez sur + pour choisir une ligne, un sens et un arrêt, puis posez le widget Ilévia sur votre écran d'accueil.")
-            }
-        } else {
-            LazyColumn(Modifier.padding(pad).fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Affichage du widget", style = MaterialTheme.typography.titleMedium)
-                            SettingRow("Heure de départ du bus", showDeparture) {
-                                showDeparture = it; store.showDeparture = it; DepartureWidget.refreshAll(context)
-                            }
-                            SettingRow("Heure où il faut partir", showLeave) {
-                                showLeave = it; store.showLeave = it; DepartureWidget.refreshAll(context)
-                            }
-                            Text(
-                                "Ajoutez un widget Ilévia (bandeau, grand chiffre, liste, grille) : à la pose, choisissez ses trajets. Pour les changer : appui long sur le widget → Reconfigurer. « Sur le widget » = trajets par défaut des widgets non configurés.",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                }
-                items(trips, key = { it.id }) { trip ->
-                    TripCard(
-                        trip = trip,
-                        isWidget = trip.id in widgetIds,
-                        onWidget = { store.toggleOnWidget(trip.id); widgetIds = store.widgetTripIds(); DepartureWidget.refreshAll(context) },
-                        onToggle = { store.save(trip.copy(enabled = it)); trips = store.all() },
-                        onDelete = { store.delete(trip.id); trips = store.all(); widgetIds = store.widgetTripIds(); DepartureWidget.refreshAll(context) },
+    } else if (overlay == "diag") {
+        BackHandler { overlay = "" }
+        DiagnosticScreen(defaultQuery = trips.firstOrNull()?.stop?.station ?: "", onClose = { overlay = "" })
+    } else {
+        val updateAvailable = updater.state is UpdateState.Available
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest) {
+                    NavigationBarItem(
+                        selected = tab == 0, onClick = { tab = 0 },
+                        icon = { Icon(Icons.Filled.Home, contentDescription = null) }, label = { Text("Trajets") },
+                    )
+                    NavigationBarItem(
+                        selected = tab == 1, onClick = { tab = 1 },
+                        icon = { Icon(Icons.Filled.Menu, contentDescription = null) }, label = { Text("Widgets") },
+                    )
+                    NavigationBarItem(
+                        selected = tab == 2, onClick = { tab = 2 },
+                        icon = {
+                            if (updateAvailable) BadgedBox(badge = { Badge() }) { Icon(Icons.Filled.Settings, contentDescription = null) }
+                            else Icon(Icons.Filled.Settings, contentDescription = null)
+                        },
+                        label = { Text("Réglages") },
                     )
                 }
+            },
+            floatingActionButton = {
+                if (tab == 0 && trips.isNotEmpty()) {
+                    ExtendedFloatingActionButton(
+                        onClick = { overlay = "new" },
+                        icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                        text = { Text("Nouveau trajet") },
+                    )
+                }
+            },
+        ) { pad ->
+            when (tab) {
+                0 -> TripsScreen(
+                    trips = trips, widgetIds = widgetIds, updater = updater, modifier = Modifier.padding(pad),
+                    onNew = { overlay = "new" },
+                    onToggleWidget = { store.toggleOnWidget(it); reload() },
+                    onToggleAlert = { trip, on -> store.save(trip.copy(enabled = on)); reload() },
+                    onDelete = { store.delete(it); reload() },
+                )
+                1 -> WidgetsScreen(store, Modifier.padding(pad))
+                else -> SettingsScreen(updater, Modifier.padding(pad), onDiagnostic = { overlay = "diag" })
             }
         }
     }
 }
 
 @Composable
-fun TripCard(trip: Trip, isWidget: Boolean, onWidget: () -> Unit, onToggle: (Boolean) -> Unit, onDelete: () -> Unit) {
+private fun ScreenHeader(title: String, subtitle: String) {
+    Column(Modifier.padding(top = 8.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.headlineLarge)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private val ScreenPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 110.dp)
+
+// ───────────────────────── Onglet « Trajets » ─────────────────────────
+
+@Composable
+fun TripsScreen(
+    trips: List<Trip>,
+    widgetIds: List<String>,
+    updater: UpdateController,
+    modifier: Modifier,
+    onNew: () -> Unit,
+    onToggleWidget: (String) -> Unit,
+    onToggleAlert: (Trip, Boolean) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    LazyColumn(modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item { ScreenHeader("Mes trajets", "Prochains départs en temps réel") }
+        val st = updater.state
+        if (st is UpdateState.Available) item { UpdateBanner(updater, st.release) }
+        if (trips.isEmpty()) {
+            item { EmptyState(onNew) }
+        } else {
+            items(trips, key = { it.id }) { trip ->
+                TripCard(
+                    trip = trip,
+                    onWidget = trip.id in widgetIds,
+                    onToggleWidget = { onToggleWidget(trip.id) },
+                    onToggleAlert = { onToggleAlert(trip, it) },
+                    onDelete = { onDelete(trip.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpdateBanner(updater: UpdateController, release: Release) {
+    val scope = rememberCoroutineScope()
+    Card(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Nouvelle version disponible", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text("Version ${release.build}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            Button(onClick = { scope.launch { updater.install(release) } }) { Text("Mettre à jour") }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(onNew: () -> Unit) {
+    AppCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+                LineBadge("84", 56.dp); LineBadge("86", 56.dp); LineBadge("82", 56.dp)
+            }
+            Text("Aucun trajet pour l'instant", style = MaterialTheme.typography.titleLarge)
+            Text(
+                "Choisissez une ligne, un sens et un arrêt : l'app vous prévient quand il faut partir, et vos widgets affichent le prochain départ.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+            )
+            Button(onClick = onNew) { Text("Créer mon premier trajet") }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun TripCard(trip: Trip, onWidget: Boolean, onToggleWidget: () -> Unit, onToggleAlert: (Boolean) -> Unit, onDelete: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
     var passages by remember { mutableStateOf<List<Passage>?>(null) }
     var error by remember { mutableStateOf(false) }
     var now by remember { mutableStateOf(Instant.now()) }
+    var confirmDelete by remember { mutableStateOf(false) }
 
     // Rafraîchit les données toutes les 30 s tant que la carte est affichée.
     LaunchedEffect(trip.stop) {
@@ -161,44 +289,216 @@ fun TripCard(trip: Trip, isWidget: Boolean, onWidget: () -> Unit, onToggle: (Boo
             delay(30_000)
         }
     }
+    val next = passages.orEmpty().firstOrNull { it.time.isAfter(now.minusSeconds(30)) }
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(trip.name, style = MaterialTheme.typography.titleMedium)
-            Text(trip.stop.label(), style = MaterialTheme.typography.bodySmall)
-            val next = passages.orEmpty().firstOrNull { it.time.isAfter(now.minusSeconds(30)) }
-            when {
-                error && passages == null -> Text("Impossible de charger les horaires")
-                passages == null -> Text("Chargement…")
-                next == null -> Text("Aucun passage prévu")
-                else -> {
-                    val mins = Duration.between(now, next.time).toMinutes().coerceAtLeast(0)
-                    Text(if (mins <= 0) "Prochain départ : imminent" else "Prochain départ : $mins min (${formatTime(next.time)})",
-                        style = MaterialTheme.typography.headlineSmall)
-                    val leave = trip.leaveTime(next.time)
-                    val lm = Duration.between(now, leave).toMinutes()
-                    Text(if (lm > 0) "Partir à ${formatTime(leave)} (dans $lm min)" else "Partez maintenant !",
-                        color = MaterialTheme.colorScheme.error)
+    AppCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LineBadge(trip.stop.line, 48.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(trip.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("→ ${pretty(trip.stop.direction)}", style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(pretty(trip.stop.station), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                when {
+                    error && passages == null -> Text("Hors ligne", style = MaterialTheme.typography.titleMedium)
+                    passages == null -> CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                    next == null -> Text("—", style = MaterialTheme.typography.headlineMedium)
+                    else -> {
+                        val m = Duration.between(now, next.time).toMinutes().coerceAtLeast(0)
+                        if (m <= 0) {
+                            Text("Proche", style = MaterialTheme.typography.titleLarge, color = scheme.primary)
+                        } else {
+                            Text("$m", style = MaterialTheme.typography.displaySmall)
+                            Text("min", style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
-            Text("Trajet à pied ${trip.walkMinutes} min + marge ${trip.bufferMinutes} min", style = MaterialTheme.typography.bodySmall)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Alerte", Modifier.weight(1f))
-                Switch(checked = trip.enabled, onCheckedChange = onToggle)
+        }
+
+        if (next != null) {
+            Spacer(Modifier.height(12.dp))
+            val leave = trip.leaveTime(next.time)
+            val lm = Duration.between(now, leave).toMinutes()
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                InfoPill("Départ ${formatTime(next.time)}", scheme.surfaceContainerHigh, scheme.onSurface)
+                if (lm > 0) InfoPill("Partir à ${formatTime(leave)}", scheme.primaryContainer, scheme.onPrimaryContainer)
+                else InfoPill("Partez maintenant !", scheme.errorContainer, scheme.onErrorContainer)
+                InfoPill("Marche ${trip.walkMinutes} min + ${trip.bufferMinutes}", scheme.surfaceContainerHigh, scheme.onSurfaceVariant)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onWidget) { Text(if (isWidget) "✓ Sur le widget" else "Mettre sur le widget") }
-                TextButton(onClick = onDelete) { Text("Supprimer") }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        HorizontalDivider(color = scheme.outlineVariant)
+        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Switch(checked = trip.enabled, onCheckedChange = onToggleAlert)
+            Text("  Alerte", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            FilterChip(
+                selected = onWidget,
+                onClick = onToggleWidget,
+                label = { Text("Widget") },
+                leadingIcon = if (onWidget) {
+                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                } else null,
+            )
+            IconButton(onClick = { confirmDelete = true }) {
+                Icon(Icons.Filled.Delete, contentDescription = "Supprimer", tint = scheme.onSurfaceVariant)
+            }
+        }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Supprimer ce trajet ?") },
+            text = { Text("« ${trip.name} » et son alerte seront supprimés.") },
+            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Supprimer") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annuler") } },
+        )
+    }
+}
+
+// ───────────────────────── Onglet « Widgets » ─────────────────────────
+
+@Composable
+fun WidgetsScreen(store: TripStore, modifier: Modifier) {
+    val context = LocalContext.current
+    var showStation by remember { mutableStateOf(store.showStation) }
+    var showDep by remember { mutableStateOf(store.showDeparture) }
+    var showLeave by remember { mutableStateOf(store.showLeave) }
+    fun refresh() { WidgetUpdater.refreshAll(context) }
+
+    LazyColumn(modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item { ScreenHeader("Widgets", "Personnalisez ce qu'affichent vos widgets") }
+        item {
+            AppCard(Modifier.fillMaxWidth()) {
+                Text("Informations affichées", style = MaterialTheme.typography.titleMedium)
+                SwitchRow("Arrêt de départ", "Nom de l'arrêt sous le numéro de ligne", showStation) { showStation = it; store.showStation = it; refresh() }
+                SwitchRow("Heure de départ du bus", "Ex. « Dép. 08:12 »", showDep) { showDep = it; store.showDeparture = it; refresh() }
+                SwitchRow("Heure où il faut partir", "Ex. « Partir 08:06 »", showLeave) { showLeave = it; store.showLeave = it; refresh() }
+            }
+        }
+        val kinds = listOf(
+            Triple("Bandeau", "Format 1×4 ou 1×5 : jusqu'à 5 trajets côte à côte.", 0),
+            Triple("Grand chiffre", "Format 2×2 : un trajet, minutes en très grand.", 1),
+            Triple("Liste de départs", "Format 4×2 ou plus : une ligne par trajet, avec l'heure de mise à jour.", 2),
+            Triple("Grille", "Format 4×3 : pastilles compactes, 1 ou 2 colonnes selon la largeur.", 3),
+        )
+        items(kinds) { (title, desc, kind) ->
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                WidgetPreview(kind, showDep, showLeave, showStation)
+            }
+        }
+        item {
+            AppCard(Modifier.fillMaxWidth()) {
+                Text("Ajouter un widget", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Appui long sur l'écran d'accueil → Widgets → « Ilévia Départs ». À la pose, choisissez les trajets à afficher. " +
+                        "Pour les changer plus tard : appui long sur le widget → Reconfigurer.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
 }
 
-private val DAY_LABELS = listOf("Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim")
+// ───────────────────────── Onglet « Réglages » ─────────────────────────
+
+@Composable
+fun SettingsScreen(updater: UpdateController, modifier: Modifier, onDiagnostic: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val scheme = MaterialTheme.colorScheme
+
+    fun openUrl(url: String) {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    LazyColumn(modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item { ScreenHeader("Réglages", "Mises à jour, alertes et diagnostic") }
+
+        item {
+            AppCard(Modifier.fillMaxWidth()) {
+                Text("Mise à jour de l'app", style = MaterialTheme.typography.titleMedium)
+                Text("Version installée : ${updater.currentName}", style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                when (val st = updater.state) {
+                    UpdateState.Idle -> Text("Aucune vérification effectuée.")
+                    UpdateState.Checking -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp); Text("  Recherche en cours…")
+                    }
+                    UpdateState.UpToDate -> Text("✓ Vous avez la dernière version.")
+                    is UpdateState.Available -> {
+                        Text("Version ${st.release.build} disponible.", fontWeight = FontWeight.SemiBold)
+                        if (st.release.notes.isNotBlank()) Text(st.release.notes.trim().take(300), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = { scope.launch { updater.install(st.release) } }) { Text("Télécharger et installer") }
+                    }
+                    is UpdateState.Downloading -> {
+                        Text("Téléchargement… ${st.percent} %")
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(progress = { st.percent / 100f }, modifier = Modifier.fillMaxWidth())
+                    }
+                    UpdateState.NeedPermission -> Text("Autorisez l'installation depuis Ilévia Départs dans l'écran qui s'est ouvert, puis revenez ici et relancez la mise à jour.")
+                    UpdateState.PrivateRepo -> Text("Les versions ne sont pas accessibles : le dépôt GitHub est privé. Rendez-le public pour activer la mise à jour dans l'app, ou ouvrez la page des versions et téléchargez l'APK.")
+                    is UpdateState.Error -> Text("Impossible de vérifier : ${st.message}", color = scheme.error)
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { scope.launch { updater.check() } }) { Text("Vérifier") }
+                    TextButton(onClick = { openUrl(Updater.RELEASES_PAGE) }) { Text("Page des versions") }
+                }
+            }
+        }
+
+        item {
+            AppCard(Modifier.fillMaxWidth()) {
+                Text("Alertes de départ", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Pour que la notification « Il est temps de partir » arrive à la minute près, autorisez les alarmes et rappels.",
+                    style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = {
+                    if (Build.VERSION.SDK_INT >= 31) {
+                        context.startActivity(
+                            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                }) { Text("Autoriser les alarmes précises") }
+            }
+        }
+
+        item {
+            AppCard(Modifier.fillMaxWidth(), onClick = onDiagnostic) {
+                Text("Diagnostic de l'API", style = MaterialTheme.typography.titleMedium)
+                Text("Voir les données brutes reçues pour un arrêt.", style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+            }
+        }
+
+        item {
+            Text(
+                "Données : ilévia / Métropole Européenne de Lille (open data).",
+                style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp),
+            )
+        }
+    }
+}
+
+// ───────────────────────── Création d'un trajet ─────────────────────────
+
+private val DAY_LABELS = listOf("L", "M", "M", "J", "V", "S", "D")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
     var data by remember { mutableStateOf<List<Passage>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -222,54 +522,124 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
         }
     }
     LaunchedEffect(Unit) { load() }
+    fun goTo(s: Int) { step = s; query = "" }
+    BackHandler(enabled = step > 0) { goTo(step - 1) }
 
-    BackHandler(enabled = step > 0) { step -= 1 }
+    val titles = listOf("Choisissez la ligne", "Choisissez le sens", "Choisissez l'arrêt", "Réglez votre trajet")
 
-    Scaffold(topBar = {
-        TopAppBar(
-            title = { Text(listOf("Choisir la ligne", "Choisir le sens", "Choisir l'arrêt", "Réglages du trajet")[step]) },
-            navigationIcon = { TextButton(onClick = { if (step > 0) step -= 1 else onCancel() }) { Text(if (step > 0) "Retour" else "Annuler") } },
-        )
-    }) { pad ->
-        Column(Modifier.padding(pad).padding(16.dp).fillMaxSize()) {
+    Scaffold(
+        containerColor = scheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("Nouveau trajet") },
+                navigationIcon = {
+                    IconButton(onClick = { if (step > 0) goTo(step - 1) else onCancel() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
+                    }
+                },
+            )
+        },
+    ) { pad ->
+        Column(Modifier.padding(pad).padding(horizontal = 16.dp).fillMaxSize()) {
+            LinearProgressIndicator(progress = { (step + 1) / 4f }, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(14.dp))
+            Text("Étape ${step + 1} sur 4", style = MaterialTheme.typography.labelLarge, color = scheme.primary)
+            Text(titles[step], style = MaterialTheme.typography.headlineMedium)
+            Spacer(Modifier.height(12.dp))
+
             val all = data
             if (all == null) {
-                Text(error?.let { "Impossible de charger les lignes Ilévia ($it)." } ?: "Chargement des lignes…")
-                if (error != null) Button(onClick = { load() }) { Text("Réessayer") }
-                return@Column
-            }
-            when (step) {
-                0 -> PickList(all.map { it.line }.distinct().sortedWith(compareBy({ it.toIntOrNull() ?: Int.MAX_VALUE }, { it }))) {
-                    line = it; step = 1
-                }
-                1 -> PickList(all.filter { it.line == line }.map { it.direction }.distinct().sorted()) {
-                    direction = it; step = 2
-                }
-                2 -> {
-                    OutlinedTextField(query, { query = it }, label = { Text("Rechercher un arrêt") }, modifier = Modifier.fillMaxWidth())
-                    PickList(
-                        all.filter { it.line == line && it.direction == direction }.map { it.station }.distinct().sorted(),
-                        query,
-                    ) { station = it; if (name.isBlank()) name = "Départ $it"; step = 3 }
-                }
-                else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("$line → $direction · $station", style = MaterialTheme.typography.titleSmall)
-                    OutlinedTextField(name, { name = it }, label = { Text("Nom du trajet") }, modifier = Modifier.fillMaxWidth())
-                    Text("Temps pour aller à l'arrêt : $walk min")
-                    Slider(walk.toFloat(), { walk = it.toInt() }, valueRange = 0f..45f)
-                    Text("Marge de sécurité : $buffer min")
-                    Slider(buffer.toFloat(), { buffer = it.toInt() }, valueRange = 0f..15f)
-                    Text("Jours d'alerte")
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        DAY_LABELS.forEachIndexed { i, label ->
-                            FilterChip(selected = (i + 1) in days, onClick = { days = if ((i + 1) in days) days - (i + 1) else days + (i + 1) }, label = { Text(label) })
+                Text(error?.let { "Impossible de charger les lignes Ilévia ($it)." } ?: "Chargement des lignes…", color = scheme.onSurfaceVariant)
+                Spacer(Modifier.height(12.dp))
+                if (error != null) Button(onClick = { load() }) { Text("Réessayer") } else CircularProgressIndicator()
+            } else when (step) {
+                0 -> {
+                    val lines = all.map { it.line }.distinct().sortedWith(compareBy({ it.toIntOrNull() ?: Int.MAX_VALUE }, { it }))
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(76.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                    ) {
+                        items(lines) { l ->
+                            Box(Modifier.clickable { line = l; goTo(1) }, contentAlignment = Alignment.Center) { LineBadge(l, 64.dp) }
                         }
                     }
-                    Text("Alerte entre ${startHour}h et ${endHour}h")
-                    Slider(startHour.toFloat(), { startHour = it.toInt().coerceAtMost(endHour) }, valueRange = 0f..23f)
-                    Slider(endHour.toFloat(), { endHour = it.toInt().coerceAtLeast(startHour) }, valueRange = 0f..23f)
-                    Button(
+                }
+                1 -> {
+                    val dirs = all.filter { it.line == line }.map { it.direction }.distinct().sorted()
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+                        items(dirs) { d ->
+                            AppCard(Modifier.fillMaxWidth(), onClick = { direction = d; goTo(2) }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    LineBadge(line ?: "", 36.dp)
+                                    Spacer(Modifier.width(12.dp))
+                                    Text("→ ${pretty(d)}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+                2 -> {
+                    OutlinedTextField(
+                        value = query, onValueChange = { query = it }, singleLine = true,
+                        label = { Text("Rechercher un arrêt") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                    val stops = all.filter { it.line == line && it.direction == direction }.map { it.station }.distinct().sorted()
+                        .filter { query.isBlank() || it.contains(query, ignoreCase = true) }
+                    LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp)) {
+                        items(stops) { s ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable { station = s; if (name.isBlank()) name = "Départ ${pretty(s)}"; goTo(3) }.padding(vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Filled.Place, contentDescription = null, tint = scheme.primary)
+                                Spacer(Modifier.width(12.dp))
+                                Text(pretty(s), style = MaterialTheme.typography.bodyLarge)
+                            }
+                            HorizontalDivider(color = scheme.outlineVariant)
+                        }
+                    }
+                }
+                else -> Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    AppCard(Modifier.fillMaxWidth()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            LineBadge(line ?: "", 44.dp)
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text("→ ${pretty(direction ?: "")}", style = MaterialTheme.typography.titleMedium)
+                                Text(pretty(station ?: ""), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    AppCard(Modifier.fillMaxWidth()) {
+                        OutlinedTextField(name, { name = it }, label = { Text("Nom du trajet") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    }
+                    AppCard(Modifier.fillMaxWidth()) {
+                        Text("Temps pour rejoindre l'arrêt", style = MaterialTheme.typography.titleMedium)
+                        Text("$walk min", style = MaterialTheme.typography.headlineMedium, color = scheme.primary)
+                        Slider(walk.toFloat(), { walk = it.toInt() }, valueRange = 0f..45f, steps = 44)
+                        Text("Marge de sécurité", style = MaterialTheme.typography.titleMedium)
+                        Text("$buffer min", style = MaterialTheme.typography.headlineMedium, color = scheme.primary)
+                        Slider(buffer.toFloat(), { buffer = it.toInt() }, valueRange = 0f..15f, steps = 14)
+                    }
+                    AppCard(Modifier.fillMaxWidth()) {
+                        Text("Quand être prévenu ?", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(10.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            DAY_LABELS.forEachIndexed { i, label ->
+                                DayToggle(label, (i + 1) in days) { days = if ((i + 1) in days) days - (i + 1) else days + (i + 1) }
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Text("De ${startHour} h à ${endHour} h", style = MaterialTheme.typography.bodyLarge)
+                        Slider(startHour.toFloat(), { startHour = it.toInt().coerceAtMost(endHour) }, valueRange = 0f..23f, steps = 22)
+                        Slider(endHour.toFloat(), { endHour = it.toInt().coerceAtLeast(startHour) }, valueRange = 0f..23f, steps = 22)
+                    }
+                    Button(
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
                         enabled = name.isNotBlank() && days.isNotEmpty(),
                         onClick = {
                             onSave(
@@ -278,26 +648,18 @@ fun NewTripScreen(onCancel: () -> Unit, onSave: (Trip) -> Unit) {
                                     stop = StopSelection(station!!, line!!, direction!!),
                                     walkMinutes = walk, bufferMinutes = buffer, days = days,
                                     startMinute = startHour * 60, endMinute = endHour * 60 + 59,
-                                )
+                                ),
                             )
                         },
                     ) { Text("Enregistrer le trajet") }
+                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
     }
 }
 
-@Composable
-private fun PickList(items: List<String>, filter: String? = null, onPick: (String) -> Unit) {
-    val shown = if (filter.isNullOrBlank()) items else items.filter { it.contains(filter, ignoreCase = true) }
-    LazyColumn(Modifier.fillMaxSize()) {
-        items(shown) { item ->
-            Text(item, Modifier.fillMaxWidth().clickable { onPick(item) }.padding(vertical = 14.dp))
-            HorizontalDivider()
-        }
-    }
-}
+// ───────────────────────── Diagnostic ─────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -306,14 +668,20 @@ fun DiagnosticScreen(defaultQuery: String, onClose: () -> Unit) {
     var query by remember { mutableStateOf(defaultQuery) }
     var out by remember { mutableStateOf("Appuyez sur Lancer.") }
     var busy by remember { mutableStateOf(false) }
-    Scaffold(topBar = {
-        TopAppBar(title = { Text("Diagnostic API") }, navigationIcon = { TextButton(onClick = onClose) { Text("Retour") } })
-    }) { pad ->
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = { Text("Diagnostic API") },
+                navigationIcon = { IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour") } },
+            )
+        },
+    ) { pad ->
         Column(
             Modifier.padding(pad).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(query, { query = it }, label = { Text("Arrêt à chercher") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(query, { query = it }, label = { Text("Arrêt à chercher") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Button(enabled = !busy, onClick = {
                 busy = true; out = "Chargement…"
                 scope.launch {
@@ -323,13 +691,5 @@ fun DiagnosticScreen(defaultQuery: String, onClose: () -> Unit) {
             }) { Text("Lancer") }
             Text(out, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
         }
-    }
-}
-
-@Composable
-fun SettingRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
     }
 }
