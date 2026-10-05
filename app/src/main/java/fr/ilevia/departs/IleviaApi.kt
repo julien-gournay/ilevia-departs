@@ -112,7 +112,7 @@ object IleviaApi {
             val parsed = all.filter { it.station.contains(q, true) }.sortedBy { it.time }
             sb.appendLine("Passages lus pour cet arrêt : ${parsed.size}")
             parsed.take(25).forEach {
-                sb.appendLine("${it.line} → ${it.direction} : ${java.time.ZonedDateTime.ofInstant(it.time, PARIS).toLocalTime()}")
+                sb.appendLine("${it.line} → ${it.direction} : ${java.time.ZonedDateTime.ofInstant(it.time, PARIS).toLocalTime().withNano(0)}")
             }
             sb.toString()
         } catch (e: Exception) {
@@ -152,12 +152,26 @@ object IleviaApi {
         Passage(station.trim(), line.trim(), direction.trim(), time)
     }
 
-    /** Accepte ISO avec ou sans fuseau (sans fuseau = heure de Paris). */
-    internal fun parseTime(s: String): Instant? = try {
-        OffsetDateTime.parse(s).toInstant()
-    } catch (_: Exception) {
-        try {
-            LocalDateTime.parse(s.replace(' ', 'T')).atZone(PARIS).toInstant()
+    /**
+     * Les heures de l'API Ilévia sont des heures locales (Paris) mais écrites avec un « Z » trompeur
+     * (ex. "2026-10-05T08:11:55Z" pour un départ à 08:11 heure de Paris, cf. le champ cle_tri
+     * "…08:11:55.000+02:00"). Donc :
+     *  - suffixe « Z » → on garde l'heure telle quelle et on la lit comme heure de Paris ;
+     *  - vrai décalage explicite (+02:00…) → on le respecte ;
+     *  - aucun suffixe → heure de Paris.
+     */
+    internal fun parseTime(s: String): Instant? {
+        val t = s.trim().replace(' ', 'T')
+        return try {
+            if (t.endsWith("Z", ignoreCase = true)) {
+                LocalDateTime.parse(t.dropLast(1)).atZone(PARIS).toInstant()
+            } else {
+                try {
+                    OffsetDateTime.parse(t).toInstant()
+                } catch (_: Exception) {
+                    LocalDateTime.parse(t).atZone(PARIS).toInstant()
+                }
+            }
         } catch (_: Exception) {
             null
         }
