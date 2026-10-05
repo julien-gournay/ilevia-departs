@@ -111,7 +111,7 @@ private fun BandMock(showDep: Boolean, showLeave: Boolean, showStation: Boolean,
                         Badge(m.line, round = false, size = 18.dp)
                         Spacer(Modifier.width(3.dp))
                         if (m.mins == "Proche") {
-                            Ellipsis("Proche", 13, primary(), bold = true)
+                            Ellipsis("Proche", 12, primary(), bold = true)
                         } else {
                             Text(m.mins, color = primary(), fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                             Text("min", color = secondary(), fontSize = 9.sp, maxLines = 1)

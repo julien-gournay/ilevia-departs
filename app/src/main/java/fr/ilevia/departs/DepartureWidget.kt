@@ -14,7 +14,8 @@ open class BaseWidget : AppWidgetProvider() {
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, newOptions: Bundle) {
-        WidgetUpdater.refreshAll(context)
+        // Simple redimensionnement : on réutilise les données en cache (pas de nouvel appel réseau si < 30 s).
+        WidgetUpdater.refreshAll(context, force = false)
     }
 
     override fun onDeleted(context: Context, ids: IntArray) {

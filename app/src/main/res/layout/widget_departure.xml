@@ -51,14 +51,11 @@
 
             <TextView
                 android:id="@+id/mins_0"
+                android:textSize="20sp"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="26sp"
-                android:autoSizeMinTextSize="11sp"
-                android:autoSizeStepGranularity="1sp"
-                android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -133,14 +130,11 @@
 
             <TextView
                 android:id="@+id/mins_1"
+                android:textSize="20sp"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="26sp"
-                android:autoSizeMinTextSize="11sp"
-                android:autoSizeStepGranularity="1sp"
-                android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -215,14 +209,11 @@
 
             <TextView
                 android:id="@+id/mins_2"
+                android:textSize="20sp"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="26sp"
-                android:autoSizeMinTextSize="11sp"
-                android:autoSizeStepGranularity="1sp"
-                android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -297,14 +288,11 @@
 
             <TextView
                 android:id="@+id/mins_3"
+                android:textSize="20sp"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="26sp"
-                android:autoSizeMinTextSize="11sp"
-                android:autoSizeStepGranularity="1sp"
-                android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -379,14 +367,11 @@
 
             <TextView
                 android:id="@+id/mins_4"
+                android:textSize="20sp"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
                 android:layout_weight="1"
-                android:autoSizeMaxTextSize="26sp"
-                android:autoSizeMinTextSize="11sp"
-                android:autoSizeStepGranularity="1sp"
-                android:autoSizeTextType="uniform"
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
