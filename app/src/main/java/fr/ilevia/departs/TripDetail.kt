@@ -2,6 +2,7 @@ package fr.ilevia.departs
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -128,7 +129,7 @@ fun TripDetailScreen(trip: Trip, onClose: () -> Unit) {
                     if (d.mine.size == 1) {
                         item {
                             Text(
-                                "Ilévia ne publie que le prochain passage de chaque ligne. Les suivants apparaissent ici dès qu'ils sont annoncés (actualisation automatique toutes les 30 s).",
+                                "Un seul passage est annoncé pour le moment. Les suivants apparaissent ici dès qu'Ilévia les publie (actualisation automatique toutes les 30 s).",
                                 style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
                             )
                         }
@@ -161,7 +162,7 @@ fun TripDetailScreen(trip: Trip, onClose: () -> Unit) {
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.Column2(trip: Trip) {
     val scheme = MaterialTheme.colorScheme
-    androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
+    Column(Modifier.weight(1f)) {
         Text("→ ${pretty(trip.stop.direction)}", style = MaterialTheme.typography.titleMedium)
         Text(pretty(trip.stop.station), style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant)
         Text(
@@ -177,7 +178,7 @@ private fun DepartureRow(trip: Trip, p: Passage, now: Instant, highlight: Boolea
     val leave = trip.leaveTime(p.time)
     val lm = Duration.between(now, leave).toMinutes()
     Row(verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f)) {
             Text(formatTime(p.time), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
                 if (lm > 0) "Partir à ${formatTime(leave)}" else if (Duration.between(now, p.time).toMinutes() <= 0) "Trop tard / imminent" else "Partez maintenant",

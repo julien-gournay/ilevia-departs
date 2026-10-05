@@ -29,4 +29,18 @@ jobs:
           note(f"cles uniques={len(keyc)} max_par_cle={max(keyc.values())}")
           for k in ("type_ligne","ligne_publique","code_ligne_public","type_vehicule"):
               if k in rows[0]: note(k+"="+str(collections.Counter(r.get(k) for r in rows).most_common(12)))
+          import datetime
+          now=datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=2))).replace(tzinfo=None)
+          def pt(s): return datetime.datetime.strptime(s[:19],"%Y-%m-%dT%H:%M:%S")
+          per=collections.defaultdict(lambda:[0,0,None])
+          for r in rows:
+              x=per[r["code_ligne"]]; x[0]+=1
+              if pt(r["heure_estimee_depart"])>now: x[1]+=1
+              dm=r.get("date_modification")
+              if dm and (x[2] is None or dm>x[2]): x[2]=dm
+          note(f"now={now} ; ligne: total/futurs/derniere_modif -> "+" ; ".join(f"{k}:{a}/{b}/{(c or '')[11:16]}" for k,(a,b,c) in sorted(per.items())))
+          past=[r for r in rows if pt(r["heure_estimee_depart"])<=now]
+          note(f"passages dans le passé={len(past)} ex="+json.dumps(past[:3],ensure_ascii=False))
+          odd=[r for r in rows if r["sens_ligne"]!=r["sens_ligne"].strip() or r["nom_station"]!=r["nom_station"].strip()]
+          note(f"espaces parasites={len(odd)}")
           PY
