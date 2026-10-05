@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
@@ -140,6 +141,10 @@ fun AppRoot() {
                 overlay = ""
             },
         )
+    } else if (overlay.startsWith("trip:")) {
+        BackHandler { overlay = "" }
+        val trip = trips.firstOrNull { it.id == overlay.removePrefix("trip:") }
+        if (trip == null) overlay = "" else TripDetailScreen(trip, onClose = { overlay = "" })
     } else if (overlay == "diag") {
         BackHandler { overlay = "" }
         DiagnosticScreen(defaultQuery = trips.firstOrNull()?.stop?.station ?: "", onClose = { overlay = "" })
@@ -181,6 +186,7 @@ fun AppRoot() {
                 0 -> TripsScreen(
                     trips = trips, widgetIds = widgetIds, updater = updater, modifier = Modifier.padding(pad),
                     onNew = { overlay = "new" },
+                    onOpen = { overlay = "trip:$it" },
                     onToggleWidget = { store.toggleOnWidget(it); reload() },
                     onToggleAlert = { trip, on -> store.save(trip.copy(enabled = on)); reload() },
                     onDelete = { store.delete(it); reload() },
@@ -211,12 +217,26 @@ fun TripsScreen(
     updater: UpdateController,
     modifier: Modifier,
     onNew: () -> Unit,
+    onOpen: (String) -> Unit,
     onToggleWidget: (String) -> Unit,
     onToggleAlert: (Trip, Boolean) -> Unit,
     onDelete: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    var refreshKey by remember { mutableIntStateOf(0) }
+    var refreshing by remember { mutableStateOf(false) }
     LazyColumn(modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { ScreenHeader("Mes trajets", "Prochains départs en temps réel") }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { ScreenHeader("Mes trajets", "Prochains départs en temps réel") }
+                if (refreshing) CircularProgressIndicator(Modifier.size(24.dp).padding(end = 0.dp), strokeWidth = 2.dp)
+                else IconButton(onClick = {
+                    refreshing = true
+                    refreshKey++
+                    WidgetUpdater.refreshAll(context) { refreshing = false }
+                }) { Icon(Icons.Filled.Refresh, contentDescription = "Actualiser") }
+            }
+        }
         val st = updater.state
         if (st is UpdateState.Available) item { UpdateBanner(updater, st.release) }
         if (trips.isEmpty()) {
@@ -225,6 +245,8 @@ fun TripsScreen(
             items(trips, key = { it.id }) { trip ->
                 TripCard(
                     trip = trip,
+                    refreshKey = refreshKey,
+                    onOpen = { onOpen(trip.id) },
                     onWidget = trip.id in widgetIds,
                     onToggleWidget = { onToggleWidget(trip.id) },
                     onToggleAlert = { onToggleAlert(trip, it) },
@@ -271,7 +293,7 @@ private fun EmptyState(onNew: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TripCard(trip: Trip, onWidget: Boolean, onToggleWidget: () -> Unit, onToggleAlert: (Boolean) -> Unit, onDelete: () -> Unit) {
+fun TripCard(trip: Trip, refreshKey: Int, onOpen: () -> Unit, onWidget: Boolean, onToggleWidget: () -> Unit, onToggleAlert: (Boolean) -> Unit, onDelete: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var passages by remember { mutableStateOf<List<Passage>?>(null) }
     var error by remember { mutableStateOf(false) }
@@ -279,10 +301,10 @@ fun TripCard(trip: Trip, onWidget: Boolean, onToggleWidget: () -> Unit, onToggle
     var confirmDelete by remember { mutableStateOf(false) }
 
     // Rafraîchit les données toutes les 30 s tant que la carte est affichée.
-    LaunchedEffect(trip.stop) {
+    LaunchedEffect(trip.stop, refreshKey) {
         while (true) {
             try {
-                passages = withContext(Dispatchers.IO) { IleviaApi.passagesFor(trip.stop) }
+                passages = withContext(Dispatchers.IO) { IleviaApi.passagesFor(trip.stop, force = refreshKey > 0) }
                 error = false
             } catch (e: Exception) { error = true }
             now = Instant.now()
@@ -291,7 +313,7 @@ fun TripCard(trip: Trip, onWidget: Boolean, onToggleWidget: () -> Unit, onToggle
     }
     val next = passages.orEmpty().firstOrNull { it.time.isAfter(now.minusSeconds(30)) }
 
-    AppCard(Modifier.fillMaxWidth()) {
+    AppCard(Modifier.fillMaxWidth(), onClick = onOpen) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             LineBadge(trip.stop.line, 48.dp)
             Spacer(Modifier.width(12.dp))

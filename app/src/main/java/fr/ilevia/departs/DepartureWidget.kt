@@ -25,7 +25,10 @@ open class BaseWidget : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_REFRESH) WidgetUpdater.refreshAll(context)
+        if (intent.action == ACTION_REFRESH) {
+            val pending = goAsync()
+            WidgetUpdater.refreshAll(context, force = true) { pending.finish() }
+        }
     }
 
     override fun onEnabled(context: Context) {

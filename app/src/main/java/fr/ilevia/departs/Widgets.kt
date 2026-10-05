@@ -46,14 +46,15 @@ object WidgetUpdater {
     )
 
     /** Récupère les données une fois, puis redessine tous les widgets posés (tous types confondus). */
-    fun refreshAll(context: Context, force: Boolean = true) {
+    fun refreshAll(context: Context, force: Boolean = true, onDone: (() -> Unit)? = null) {
         val app = context.applicationContext
         val manager = AppWidgetManager.getInstance(app)
         val targets = TARGETS
             .map { (cls, renderer) -> Triple(cls, renderer, manager.getAppWidgetIds(ComponentName(app, cls))) }
             .filter { it.third.isNotEmpty() }
-        if (targets.isEmpty()) return
+        if (targets.isEmpty()) { onDone?.invoke(); return }
         Thread {
+          try {
             val store = TripStore(app)
             val fetched = try { IleviaApi.fetchAll(force = force); true } catch (e: Exception) { false }
             val now = Instant.now()
@@ -69,6 +70,7 @@ object WidgetUpdater {
                     manager.updateAppWidget(id, renderer.render(WidgetCtx(app, data, w, h, store.showDeparture, store.showLeave, store.showStation, now, updated)))
                 }
             }
+          } finally { onDone?.invoke() }
         }.start()
     }
 }
