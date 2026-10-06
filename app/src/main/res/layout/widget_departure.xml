@@ -52,10 +52,10 @@
             <TextView
                 android:id="@+id/mins_0"
                 android:textSize="20sp"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
-                android:layout_weight="1"
+                
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -64,7 +64,7 @@
                 android:id="@+id/unit_0"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="1dp"
+                android:layout_marginStart="3dp"
                 android:singleLine="true"
                 android:text="min"
                 android:textColor="@color/widget_text_secondary"
@@ -131,10 +131,10 @@
             <TextView
                 android:id="@+id/mins_1"
                 android:textSize="20sp"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
-                android:layout_weight="1"
+                
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -143,7 +143,7 @@
                 android:id="@+id/unit_1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="1dp"
+                android:layout_marginStart="3dp"
                 android:singleLine="true"
                 android:text="min"
                 android:textColor="@color/widget_text_secondary"
@@ -210,10 +210,10 @@
             <TextView
                 android:id="@+id/mins_2"
                 android:textSize="20sp"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
-                android:layout_weight="1"
+                
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -222,7 +222,7 @@
                 android:id="@+id/unit_2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="1dp"
+                android:layout_marginStart="3dp"
                 android:singleLine="true"
                 android:text="min"
                 android:textColor="@color/widget_text_secondary"
@@ -289,10 +289,10 @@
             <TextView
                 android:id="@+id/mins_3"
                 android:textSize="20sp"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
-                android:layout_weight="1"
+                
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -301,7 +301,7 @@
                 android:id="@+id/unit_3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="1dp"
+                android:layout_marginStart="3dp"
                 android:singleLine="true"
                 android:text="min"
                 android:textColor="@color/widget_text_secondary"
@@ -368,10 +368,10 @@
             <TextView
                 android:id="@+id/mins_4"
                 android:textSize="20sp"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="3dp"
-                android:layout_weight="1"
+                
                 android:maxLines="1"
                 android:textColor="@color/widget_text"
                 android:textStyle="bold" />
@@ -380,7 +380,7 @@
                 android:id="@+id/unit_4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="1dp"
+                android:layout_marginStart="3dp"
                 android:singleLine="true"
                 android:text="min"
                 android:textColor="@color/widget_text_secondary"

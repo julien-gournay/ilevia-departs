@@ -65,8 +65,14 @@ object WidgetUpdater {
             for ((_, renderer, ids) in targets) {
                 for (id in ids) {
                     val opts = manager.getAppWidgetOptions(id)
-                    val w = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 180)
-                    val h = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 70)
+                    // MIN_* = taille en paysage, MAX_* = taille en portrait (hauteur réelle plus grande en portrait).
+                    val portrait = app.resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                    val minW = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 180)
+                    val maxW = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, minW)
+                    val minH = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 70)
+                    val maxH = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, minH)
+                    val w = if (portrait) minW else maxW
+                    val h = if (portrait) maxH else minH
                     val data = store.tripsForWidget(id).map { t ->
                         TileData(t, if (fetched) IleviaApi.passagesFor(t.stop).filter { it.time.isAfter(now.minusSeconds(30)) } else null)
                     }
@@ -166,8 +172,8 @@ object BandRenderer : Renderer {
         val tileW = (c.widthDp - 12f) / count
         val innerH = (c.heightDp - 12f).coerceAtLeast(30f)
 
-        var lineSz = (innerH * 0.15f).coerceIn(9f, 13f)
-        val minsSz = minOf((innerH * 0.36f).coerceIn(15f, 42f), ((tileW - 56f) / 1.2f).coerceAtLeast(12f))
+        var lineSz = (innerH * 0.17f).coerceIn(9f, 14f)
+        val minsSz = minOf((innerH * 0.42f).coerceIn(15f, 48f), ((tileW - 56f) / 1.2f).coerceAtLeast(12f))
         val rowH = maxOf(minsSz * 1.25f, 20f)
         // Lignes voulues (0 = arrêt, 1 = départ, 2 = partir). L'arrêt est prioritaire : si la place manque,
         // on réduit d'abord la taille du texte, puis on retire l'heure de départ, puis « partir » — jamais l'arrêt en premier.
