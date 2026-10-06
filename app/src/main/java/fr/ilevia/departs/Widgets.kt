@@ -224,14 +224,18 @@ object BigRenderer : Renderer {
         val w = c.widthDp.toFloat()
         val h = c.heightDp.toFloat()
         val numByW = (w - 24f) / 1.75f
-        var numSz = minOf(numByW, (h - 48f) * 0.62f).coerceIn(26f, 110f)
-
-        // Combien de lignes de 15 dp tient le panneau sous le chiffre ?
-        var panelLines = ((h - 20f - 24f - numSz * 1.15f - 14f) / 15f).toInt()
-        if (panelLines < 1) {
-            panelLines = 0
-            numSz = minOf(numByW, (h - 44f) / 1.15f).coerceIn(26f, 130f)
+        // Hauteur utile : marges (20) + ligne du badge (18). Le chiffre prend tout le reste, moins le panneau.
+        val usable = h - 20f - 18f
+        val maxLines = 1 + (if (c.showLeave) 1 else 0) + (if (c.showDep) 1 else 0)
+        fun numFor(lines: Int): Float {
+            val panelH = if (lines > 0) lines * 14.5f + 16f else 0f
+            return minOf(numByW, (usable - panelH) / 1.18f)
         }
+        val best = minOf(numByW, usable / 1.18f)
+        // On garde le plus de lignes d'infos possible tant que le chiffre reste ≥ 65 % de sa taille maximale.
+        var panelLines = 0
+        for (n in maxLines downTo 1) { if (numFor(n) >= best * 0.65f) { panelLines = n; break } }
+        val numSz = numFor(panelLines).coerceIn(26f, 180f)
         val keepLeave = c.showLeave && panelLines >= 2
         val keepDep = c.showDep && panelLines >= (if (keepLeave) 3 else 2)
 
