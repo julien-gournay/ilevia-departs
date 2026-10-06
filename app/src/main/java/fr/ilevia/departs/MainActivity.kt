@@ -292,6 +292,7 @@ private val ScreenPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 24.d
 
 // ───────────────────────── Onglet « Trajets » ─────────────────────────
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TripsScreen(
     trips: List<Trip>,
@@ -317,7 +318,16 @@ fun TripsScreen(
     var refreshing by remember { mutableStateOf(false) }
     var reorder by remember { mutableStateOf(false) }
     val entries = mergeOrder(order, trips, favs)
-    LazyColumn(modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = {
+            refreshing = true
+            refreshKey++
+            WidgetUpdater.refreshAll(context, force = true) { refreshing = false }
+        },
+        modifier = modifier.fillMaxSize(),
+    ) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { ScreenHeader("Mes trajets", "Prochains départs en temps réel") }
@@ -375,6 +385,7 @@ fun TripsScreen(
                 }
             }
         }
+    }
     }
 }
 

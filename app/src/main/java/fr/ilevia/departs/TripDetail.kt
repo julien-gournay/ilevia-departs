@@ -113,8 +113,11 @@ fun TripDetailScreen(
             )
         },
     ) { pad ->
+        androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+            isRefreshing = loading, onRefresh = { key++ }, modifier = Modifier.fillMaxSize().padding(pad),
+        ) {
         LazyColumn(
-            Modifier.fillMaxSize().padding(pad),
+            Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -204,6 +207,7 @@ fun TripDetailScreen(
                 }
             }
         }
+    }
     }
 }
 
