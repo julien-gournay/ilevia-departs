@@ -282,6 +282,7 @@ fun FavoriteCard(
     var error by remember { mutableStateOf(false) }
     var now by remember { mutableStateOf(Instant.now()) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showOptions by remember { mutableStateOf(false) }
 
     LaunchedEffect(f.stop, refreshKey) {
         while (true) {
@@ -296,7 +297,7 @@ fun FavoriteCard(
     val todayOk = FavoriteTracker.dowOf(now) in f.days
     val match = passages?.let { FavoriteTracker.match(f, it, now) }
 
-    AppCard(Modifier.fillMaxWidth()) {
+    AppCard(Modifier.fillMaxWidth(), onClick = { showOptions = false }, onLongClick = { showOptions = true }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             LineBadge(f.stop.line, 48.dp)
             Spacer(Modifier.width(12.dp))
@@ -351,14 +352,21 @@ fun FavoriteCard(
             if (disruptionCount > 0) InfoPill("⚠ $disruptionCount info${if (disruptionCount > 1) "s" else ""} trafic", scheme.errorContainer, scheme.onErrorContainer)
         }
 
-        Spacer(Modifier.height(8.dp))
-        HorizontalDivider(color = scheme.outlineVariant)
-        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = f.enabled, onCheckedChange = onToggle)
-            Text("  Alertes", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f).clickable(onClick = onEditAlerts))
-            TextButton(onClick = onEditAlerts) { Text("Régler") }
-            IconButton(onClick = { confirmDelete = true }) {
-                Icon(Icons.Filled.Delete, contentDescription = "Supprimer", tint = scheme.onSurfaceVariant)
+        if (showOptions) {
+            Spacer(Modifier.height(8.dp))
+            HorizontalDivider(color = scheme.outlineVariant)
+            Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Switch(checked = f.enabled, onCheckedChange = onToggle)
+                Text("  Alertes", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                TextButton(onClick = onEditAlerts) { Text("Régler") }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { confirmDelete = true }) {
+                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = scheme.error)
+                    Text("  Supprimer", color = scheme.error)
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { showOptions = false }) { Text("Fermer") }
             }
         }
     }
@@ -368,7 +376,7 @@ fun FavoriteCard(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Supprimer ce favori ?") },
             text = { Text("« ${f.name} » et ses alertes seront supprimés.") },
-            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Supprimer") } },
+            confirmButton = { TextButton(onClick = { confirmDelete = false; showOptions = false; onDelete() }) { Text("Supprimer") } },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annuler") } },
         )
     }
