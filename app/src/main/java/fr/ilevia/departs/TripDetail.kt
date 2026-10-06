@@ -130,32 +130,6 @@ fun TripDetailScreen(
                     }
                 }
             }
-            item {
-                AppCard(Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Switch(checked = trip.enabled, onCheckedChange = onToggleAlert)
-                        Text(
-                            "  Alerte · ${trip.windows().size} plage${if (trip.windows().size > 1) "s" else ""}",
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = onEditAlerts) { Text("Régler") }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Afficher sur les widgets", modifier = Modifier.weight(1f))
-                        FilterChip(
-                            selected = onWidget, onClick = onToggleWidget, label = { Text("Widget") },
-                            leadingIcon = if (onWidget) {
-                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                            } else null,
-                        )
-                    }
-                    HorizontalDivider(color = scheme.outlineVariant, modifier = Modifier.padding(vertical = 6.dp))
-                    TextButton(onClick = { confirmDelete = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = scheme.error)
-                        Text("  Supprimer ce trajet", color = scheme.error)
-                    }
-                }
-            }
             val d = data
             if (d == null) {
                 item {
@@ -203,6 +177,32 @@ fun TripDetailScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+            item {
+                AppCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = trip.enabled, onCheckedChange = onToggleAlert)
+                        Text(
+                            "  Alerte · ${trip.windows().size} plage${if (trip.windows().size > 1) "s" else ""}",
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = onEditAlerts) { Text("Régler") }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Afficher sur les widgets", modifier = Modifier.weight(1f))
+                        FilterChip(
+                            selected = onWidget, onClick = onToggleWidget, label = { Text("Widget") },
+                            leadingIcon = if (onWidget) {
+                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else null,
+                        )
+                    }
+                    HorizontalDivider(color = scheme.outlineVariant, modifier = Modifier.padding(vertical = 6.dp))
+                    TextButton(onClick = { confirmDelete = true }) {
+                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = scheme.error)
+                        Text("  Supprimer ce trajet", color = scheme.error)
                     }
                 }
             }
