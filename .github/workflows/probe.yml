@@ -8,30 +8,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Join
+      - name: Count
         run: |
-          curl -sSL -o gtfs.zip https://media.ilevia.fr/opendata/gtfs.zip
           python3 - <<'PY'
-          import json,urllib.request,re,zipfile,csv,io,unicodedata
+          import json,urllib.request,collections
           def note(m): print("::notice::"+m.replace("\n"," | ")[:950])
-          def norm(s): return re.sub(r"[^a-z0-9]+"," ",unicodedata.normalize("NFD",s).encode("ascii","ignore").decode().lower()).strip()
-          B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/"
+          B="https://data.lillemetropole.fr/geoserver/ogc/features/v1/collections/dsp_ilevia:prochains_passages/items?f=application/json"
           g=lambda u: json.load(urllib.request.urlopen(urllib.request.Request(u,headers={"User-Agent":"p"}),timeout=120))
-          ps=[f["properties"] for f in g(B+"dsp_ilevia:physical_stop/items?f=application/json&limit=9000")["features"]]
-          feed=[f["properties"] for f in g(B+"dsp_ilevia:prochains_passages/items?f=application/json&limit=20000")["features"]]
-          pdn=[p for p in ps if p["code_arret_physique"]=="PDN004"]
-          note("PDN004="+json.dumps(pdn,ensure_ascii=False))
-          # couverture: (ligne, nom norm) du flux retrouvé dans physical_stop ?
-          pset={(p["code_ligne"],norm(p["nom_commercial_arret"] or "")) for p in ps}
-          pcode={(p["code_ligne"],p["code_arret_physique"]) for p in ps}
-          rows={(r["code_ligne"],norm(r["nom_station"]),re.search(r"BP:(\w+):LOC",r["identifiant_station"]).group(1) if re.search(r"BP:(\w+):LOC",r["identifiant_station"]) else None) for r in feed}
-          byname=sum(1 for l,n,c in rows if (l,n) in pset); bycode=sum(1 for l,n,c in rows if (l,c) in pcode)
-          note(f"flux (ligne,arret)={len(rows)} retrouves par nom={byname} par code physique={bycode}")
-          miss=[(l,n) for l,n,c in rows if (l,n) not in pset][:12]
-          note("non retrouves par nom="+str(miss))
-          z=zipfile.ZipFile("gtfs.zip")
-          gs={r["stop_id"]:r for r in csv.DictReader(io.TextIOWrapper(z.open("stops.txt"),encoding="utf-8-sig"))}
-          com={p["code_arret_commercial"] for p in ps}
-          st=set(r["stop_id"] for r in csv.DictReader(io.TextIOWrapper(z.open("stop_times.txt"),encoding="utf-8-sig")))
-          note(f"GTFS stop_ids utilises={len(st)} dont dans physical.code_arret_commercial={len(st&com)} ; ex non joints={[gs[s]['stop_name'] for s in list(st-com)[:6] if s in gs]}")
+          d=g(B+"&limit=20000")
+          fs=d["features"]
+          note("keys="+",".join(d.keys())+" n="+str(len(fs))+" matched="+str(d.get("numberMatched"))+" returned="+str(d.get("numberReturned"))+" links="+json.dumps([l.get("rel") for l in d.get("links",[])]))
+          c=collections.Counter((f["properties"]["nom_station"],f["properties"]["code_ligne"],f["properties"]["sens_ligne"]) for f in fs)
+          h=collections.Counter(c.values())
+          note("rows per key histogram="+json.dumps(sorted(h.items())))
+          k=[x for x,v in c.items() if v>=5][:1]
+          if k:
+            rows=[f["properties"] for f in fs if (f["properties"]["nom_station"],f["properties"]["code_ligne"],f["properties"]["sens_ligne"])==k[0]]
+            note(json.dumps(rows,ensure_ascii=False))
+          ex=fs[0]["properties"]; note("sample="+json.dumps(ex,ensure_ascii=False))
+          d2=g(B+"&limit=20000&startIndex=%d"%len(fs))
+          note("next page n="+str(len(d2["features"])))
           PY
