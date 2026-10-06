@@ -3,6 +3,7 @@ package fr.ilevia.departs
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -60,11 +61,12 @@ fun LineBadge(line: String, size: Dp = 44.dp, modifier: Modifier = Modifier) {
 }
 
 /** Carte standard : fond blanc/sombre, bordure fine, grands arrondis. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun AppCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+fun AppCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, onLongClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val shape = RoundedCornerShape(20.dp)
     Card(
-        modifier = if (onClick != null) modifier.clip(shape).clickable(onClick = onClick) else modifier,
+        modifier = if (onClick != null) modifier.clip(shape).combinedClickable(onClick = onClick, onLongClick = onLongClick) else modifier,
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),

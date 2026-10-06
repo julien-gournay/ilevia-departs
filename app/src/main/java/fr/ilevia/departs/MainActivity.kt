@@ -52,6 +52,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -176,7 +177,14 @@ fun AppRoot() {
     } else if (overlay.startsWith("trip:")) {
         BackHandler { overlay = "" }
         val trip = trips.firstOrNull { it.id == overlay.removePrefix("trip:") }
-        if (trip == null) overlay = "" else TripDetailScreen(trip, onClose = { overlay = "" })
+        if (trip == null) overlay = "" else TripDetailScreen(
+            trip, onClose = { overlay = "" },
+            onWidget = trip.id in widgetIds,
+            onToggleWidget = { store.toggleOnWidget(trip.id); reload() },
+            onToggleAlert = { on -> store.save(trip.copy(enabled = on)); reload() },
+            onEditAlerts = { editTrip = trip },
+            onDelete = { store.delete(trip.id); reload(); overlay = "" },
+        )
     } else if (overlay == "diag") {
         BackHandler { overlay = "" }
         DiagnosticScreen(defaultQuery = trips.firstOrNull()?.stop?.station ?: "", onClose = { overlay = "" })
@@ -348,12 +356,8 @@ fun TripsScreen(
                             TripCard(
                                 trip = trip,
                                 disruptionCount = Disruptions.forLines(disruptions, setOf(trip.stop.line)).size,
-                                onEditAlerts = { onEditTripAlerts(trip) },
                                 refreshKey = refreshKey,
                                 onOpen = { onOpen(trip.id) },
-                                onWidget = trip.id in widgetIds,
-                                onToggleWidget = { onToggleWidget(trip.id) },
-                                onToggleAlert = { onToggleAlert(trip, it) },
                                 onDelete = { onDelete(trip.id) },
                             )
                         }
@@ -410,12 +414,13 @@ private fun EmptyState(onNew: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TripCard(trip: Trip, disruptionCount: Int, onEditAlerts: () -> Unit, refreshKey: Int, onOpen: () -> Unit, onWidget: Boolean, onToggleWidget: () -> Unit, onToggleAlert: (Boolean) -> Unit, onDelete: () -> Unit) {
+fun TripCard(trip: Trip, disruptionCount: Int, refreshKey: Int, onOpen: () -> Unit, onDelete: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     var passages by remember { mutableStateOf<List<Passage>?>(null) }
     var error by remember { mutableStateOf(false) }
     var now by remember { mutableStateOf(Instant.now()) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
 
     // Rafraîchit les données toutes les 30 s tant que la carte est affichée.
     LaunchedEffect(trip.stop, refreshKey) {
@@ -430,7 +435,7 @@ fun TripCard(trip: Trip, disruptionCount: Int, onEditAlerts: () -> Unit, refresh
     }
     val next = passages.orEmpty().firstOrNull { it.time.isAfter(now.minusSeconds(30)) }
 
-    AppCard(Modifier.fillMaxWidth(), onClick = onOpen) {
+    AppCard(Modifier.fillMaxWidth(), onClick = { if (showDelete) showDelete = false else onOpen() }, onLongClick = { showDelete = true }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             LineBadge(trip.stop.line, 48.dp)
             Spacer(Modifier.width(12.dp))
@@ -476,25 +481,17 @@ fun TripCard(trip: Trip, disruptionCount: Int, onEditAlerts: () -> Unit, refresh
             }
         }
 
-        Spacer(Modifier.height(8.dp))
-        HorizontalDivider(color = scheme.outlineVariant)
-        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Switch(checked = trip.enabled, onCheckedChange = onToggleAlert)
-            Text(
-                "  Alerte · ${trip.windows().size} plage${if (trip.windows().size > 1) "s" else ""}",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f).clickable(onClick = onEditAlerts),
-            )
-            FilterChip(
-                selected = onWidget,
-                onClick = onToggleWidget,
-                label = { Text("Widget") },
-                leadingIcon = if (onWidget) {
-                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                } else null,
-            )
-            IconButton(onClick = { confirmDelete = true }) {
-                Icon(Icons.Filled.Delete, contentDescription = "Supprimer", tint = scheme.onSurfaceVariant)
+        if (showDelete) {
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(
+                    onClick = { confirmDelete = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = scheme.errorContainer, contentColor = scheme.onErrorContainer),
+                ) {
+                    Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text("  Supprimer")
+                }
+                TextButton(onClick = { showDelete = false }) { Text("Annuler") }
             }
         }
     }
@@ -504,8 +501,8 @@ fun TripCard(trip: Trip, disruptionCount: Int, onEditAlerts: () -> Unit, refresh
             onDismissRequest = { confirmDelete = false },
             title = { Text("Supprimer ce trajet ?") },
             text = { Text("« ${trip.name} » et son alerte seront supprimés.") },
-            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Supprimer") } },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annuler") } },
+            confirmButton = { TextButton(onClick = { confirmDelete = false; showDelete = false; onDelete() }) { Text("Supprimer") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false; showDelete = false }) { Text("Annuler") } },
         )
     }
 }

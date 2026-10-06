@@ -14,7 +14,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -47,7 +53,12 @@ private class DetailData(val mine: List<Passage>, val others: List<Passage>)
 /** Détail d'un trajet : tous les passages connus pour la ligne + les autres lignes de l'arrêt. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TripDetailScreen(trip: Trip, onClose: () -> Unit) {
+fun TripDetailScreen(
+    trip: Trip, onClose: () -> Unit,
+    onWidget: Boolean, onToggleWidget: () -> Unit,
+    onToggleAlert: (Boolean) -> Unit, onEditAlerts: () -> Unit, onDelete: () -> Unit,
+) {
+    var confirmDelete by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
     var data by remember { mutableStateOf<DetailData?>(null) }
     var error by remember { mutableStateOf(false) }
@@ -79,6 +90,15 @@ fun TripDetailScreen(trip: Trip, onClose: () -> Unit) {
     }
 
     BackHandler(onBack = onClose)
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Supprimer ce trajet ?") },
+            text = { Text("« ${trip.name} » et son alerte seront supprimés.") },
+            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Supprimer") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annuler") } },
+        )
+    }
     Scaffold(
         containerColor = scheme.background,
         topBar = {
@@ -104,6 +124,32 @@ fun TripDetailScreen(trip: Trip, onClose: () -> Unit) {
                         LineBadge(trip.stop.line, 48.dp)
                         Spacer(Modifier.width(12.dp))
                         Column2(trip)
+                    }
+                }
+            }
+            item {
+                AppCard(Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = trip.enabled, onCheckedChange = onToggleAlert)
+                        Text(
+                            "  Alerte · ${trip.windows().size} plage${if (trip.windows().size > 1) "s" else ""}",
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = onEditAlerts) { Text("Régler") }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Afficher sur les widgets", modifier = Modifier.weight(1f))
+                        FilterChip(
+                            selected = onWidget, onClick = onToggleWidget, label = { Text("Widget") },
+                            leadingIcon = if (onWidget) {
+                                { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else null,
+                        )
+                    }
+                    HorizontalDivider(color = scheme.outlineVariant, modifier = Modifier.padding(vertical = 6.dp))
+                    TextButton(onClick = { confirmDelete = true }) {
+                        Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = scheme.error)
+                        Text("  Supprimer ce trajet", color = scheme.error)
                     }
                 }
             }
