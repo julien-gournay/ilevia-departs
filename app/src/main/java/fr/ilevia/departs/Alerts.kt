@@ -132,6 +132,51 @@ object Notifier {
         }
     }
 
+    private const val LIVE_CHANNEL = "live_tracking"
+
+    private fun liveId(f: Favorite) = f.id.hashCode() + 2000
+
+    fun cancelLive(context: Context, f: Favorite) {
+        (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(liveId(f))
+    }
+
+    /**
+     * Notification de suivi en direct d'un horaire favori. Silencieuse, persistante, avec compte à rebours.
+     * Sur Android 16+ (Pixel), elle est demandée comme « mise à jour en direct » : elle peut alors apparaître
+     * en puce dans la barre d'état et sur l'écran de verrouillage.
+     */
+    fun live(context: Context, f: Favorite, p: Passage, minsLeft: Int, delayTxt: String) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (nm.getNotificationChannel(LIVE_CHANNEL) == null) {
+            nm.createNotificationChannel(NotificationChannel(LIVE_CHANNEL, "Suivi en direct", NotificationManager.IMPORTANCE_DEFAULT).apply { setSound(null, null); enableVibration(false) })
+        }
+        val open = PendingIntent.getActivity(
+            context, 0, Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val short = if (minsLeft <= 0) "Proche" else "$minsLeft min"
+        val b = NotificationCompat.Builder(context, LIVE_CHANNEL)
+            .setSmallIcon(android.R.drawable.ic_menu_directions)
+            .setContentTitle("${f.stop.line} · ${pretty(f.stop.station)} · $short")
+            .setContentText("Passe à ${formatTime(p.time)} · $delayTxt")
+            .setSubText("→ ${pretty(f.stop.direction)}")
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setShowWhen(true)
+            .setWhen(p.time.toEpochMilli())
+            .setUsesChronometer(true)
+            .setChronometerCountDown(true)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setContentIntent(open)
+        // Android 16 : demande de promotion en « mise à jour en direct » + texte court pour la puce.
+        b.addExtras(android.os.Bundle().apply {
+            putBoolean("android.requestPromotedOngoing", true)
+            putString("android.shortCriticalText", short)
+        })
+        nm.notify(liveId(f), b.build())
+    }
+
     fun favorite(context: Context, f: Favorite, notifId: Int, title: String, text: String) {
         ensureChannel(context)
         val open = PendingIntent.getActivity(

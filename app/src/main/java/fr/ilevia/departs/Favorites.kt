@@ -54,9 +54,9 @@ object FavoriteTracker {
             }
             val p = match(f, IleviaApi.passagesFor(f.stop), now)
             val inPeriod = !now.isAfter(ref.plusSeconds(20 * 60L)) || (p != null && p.time.isAfter(now.minusSeconds(60)))
-            if (!inPeriod) continue
+            if (!inPeriod) { Notifier.cancelLive(context, f); continue }
             next = earliest(next, now.plusSeconds(60))
-            if (p == null) continue
+            if (p == null) { Notifier.cancelLive(context, f); continue }
 
             val secs = Duration.between(now, p.time).seconds
             val minsLeft = (secs / 60).toInt()
@@ -67,6 +67,9 @@ object FavoriteTracker {
                 d <= -1 -> "en avance de ${-d} min (prévu ${fmtMinute(f.minute)})"
                 else -> "à l'heure"
             }
+
+            // Suivi en direct (notification persistante, mise à jour chaque minute).
+            if (secs > -60) Notifier.live(context, f, p, minsLeft, delayTxt) else Notifier.cancelLive(context, f)
 
             // Alertes « T-N » : on envoie une seule notification même si plusieurs seuils sont dépassés d'un coup.
             if (secs > 0) {
